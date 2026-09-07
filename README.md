@@ -70,7 +70,7 @@ install required. Everything is exposed on a single global, `JHGrid` (the grid c
 `JHGrid.JHGrid`):
 
 ```html
-<!-- pin an exact tag/commit for production; @latest always serves the latest commit on that branch -->
+<!-- pin an exact tag for production; @latest resolves to the newest git tag -->
 <script src="https://cdn.jsdelivr.net/gh/JH-Grid/JHGrid@latest/dist/jhgrid.min.js"></script>
 <script>
   const grid = new JHGrid.JHGrid({
