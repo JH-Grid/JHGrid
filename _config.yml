@@ -1,0 +1,27 @@
+# GitHub Pages builds this with its own bundled Jekyll — no local Ruby/npm install needed.
+# Just the Docs isn't on GitHub Pages' built-in theme allowlist, so it's pulled in as a
+# remote theme instead (jekyll-remote-theme is on the allowed-plugins list).
+title: JH Grid
+description: High-performance Canvas-based data grid with smooth 2D virtualization.
+remote_theme: just-the-docs/just-the-docs
+
+plugins:
+  - jekyll-remote-theme
+  # The docs already cross-link each other as plain relative "*.md" paths (for GitHub's own
+  # file viewer, which resolves those directly) — this plugin rewrites the same links to the
+  # built page URLs instead, so they don't 404 once Jekyll turns each .md into a page.
+  - jekyll-relative-links
+
+# Just the Docs settings
+search_enabled: true
+nav_sort: case_insensitive
+heading_anchors: true
+
+# Only these get built into pages; the pre-built JS bundles/LICENSE/NOTICE are just static
+# downloads, not something Jekyll should try to parse as a page.
+include:
+  - docs
+exclude:
+  - dist
+  - NOTICE
+  - LICENSE

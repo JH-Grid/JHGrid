@@ -1,0 +1,67 @@
+JHGrid Proprietary License
+
+Copyright (c) 2026 JHGrid Contributors. All rights reserved.
+
+This license governs use of the compiled/bundled distributions of JHGrid made
+available in this repository (the files under `dist/`, including but not
+limited to `jhgrid.js`, `jhgrid.min.js`, and `jhgrid.esm.js`) (the
+"Software"). It does not grant any right to the underlying source code,
+which is not distributed here.
+
+1. GRANT OF LICENSE
+
+   Subject to the terms of this license, JHGrid Contributors grants you a
+   free, worldwide, non-exclusive, non-transferable license to use the
+   Software, in unmodified compiled form, within your own applications,
+   products, and websites, for any number of end users, including
+   commercial use.
+
+2. RESTRICTIONS
+
+   You may NOT, without prior written permission from JHGrid Contributors:
+
+   a. redistribute, sublicense, sell, rent, or otherwise make the Software
+      (in whole or in part) available as a standalone product, library, or
+      competing offering, whether unmodified or modified;
+
+   b. reverse engineer, decompile, disassemble, or otherwise attempt to
+      derive the source code of the Software, except to the extent such
+      restriction is prohibited by applicable law;
+
+   c. remove or alter any copyright, trademark, or other proprietary
+      notice contained in the Software;
+
+   d. use the JHGrid name, logo, or trademarks to endorse or promote
+      products derived from the Software without prior written consent.
+
+3. OWNERSHIP
+
+   The Software is licensed, not sold. JHGrid Contributors retains all
+   right, title, and interest in and to the Software, including all
+   intellectual property rights therein. No rights are granted other than
+   those expressly stated in this license.
+
+4. NO WARRANTY
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+   OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
+   NONINFRINGEMENT.
+
+5. LIMITATION OF LIABILITY
+
+   IN NO EVENT SHALL JHGRID CONTRIBUTORS BE LIABLE FOR ANY CLAIM, DAMAGES,
+   OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR
+   OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR
+   THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+6. TERMINATION
+
+   This license terminates automatically if you breach any of its terms.
+   Upon termination you must stop using the Software and destroy all
+   copies in your possession.
+
+7. CONTACT
+
+   For redistribution, OEM, or source-code licensing inquiries, contact
+   JHGrid Contributors via https://github.com/JH-Grid/JHGrid.
