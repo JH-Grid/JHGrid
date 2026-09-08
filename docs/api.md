@@ -14,8 +14,8 @@ nav_order: 3
 | `container` | `string \| Element` | **required** | CSS selector or DOM element |
 | `fetchMeta` | `async (state?) => GridMeta` | one of these four required | Returns total row count and column list. Used together with `fetchData` |
 | `fetchData` | `async (page, size, state?) => GridData` | one of these four required | Returns a page of row data. Used together with `fetchMeta` |
-| `fetchPage` | `async (page, size, state?) => GridData & { totalRows, columns? }` | one of these four required | Single-callback alternative to `fetchMeta`+`fetchData` for a backend that returns both together — see [`fetchPage`](#fetchpage--single-callback-alternative) |
-| `data` | `object[]` | one of these four required | In-memory array — convenience alternative to `fetchMeta`/`fetchData`/`fetchPage`, see [Local Array Data](#local-array-data-data) |
+| `fetchPage` | `async (page, size, state?) => GridData & { totalRows, columns? }` | one of these four required | Single-callback alternative to `fetchMeta`+`fetchData` for a backend that returns both together: see [`fetchPage`](#fetchpage-single-callback-alternative) |
+| `data` | `object[]` | one of these four required | In-memory array, a convenience alternative to `fetchMeta`/`fetchData`/`fetchPage`, see [Local Array Data](#local-array-data-data) |
 | `width` | `number` | `1200` | Grid width in CSS pixels |
 | `height` | `number` | `700` | Grid height in CSS pixels |
 | `rowHeight` | `number` | `28` | Row height in CSS pixels |
@@ -30,16 +30,16 @@ nav_order: 3
 | `chunkSize` | `number` | `300` | Rows fetched per API request |
 | `maxCachedChunks` | `number` | `50` | Maximum number of chunks kept in memory (LRU) |
 | `pagination` | `{ enabled, pageSize? }` | `undefined` | When set, switches from continuous virtual scrolling to classic paging (fixed-size pages + a pager bar at the bottom). `pageSize` defaults to `50` when omitted, and takes priority over `chunkSize` when set |
-| `onPageChange` | `Function` | `undefined` | Page-change callback `(page, pageCount) => void` — fired only when the page actually changes |
+| `onPageChange` | `Function` | `undefined` | Page-change callback `(page, pageCount) => void`, fired only when the page actually changes |
 | `frozenCols` | `number` | `0` | Number of columns frozen from the left. Frozen columns always stay visible during horizontal scroll |
 | `frozenColsRight` | `number` | `0` | Number of columns frozen from the right |
 | `editableCols` | `string[] \| '*'` | `[]` | List of editable columns. All columns are readonly if omitted; `'*'` makes all columns editable |
-| `deleteMode` | `'mark' \| 'permanent'` | `'mark'` | What `deleteRow()` does to a **server** row when the call doesn't say: `'mark'` dims it with a strikethrough and keeps it on screen (reported by `getDeletedRows()`); `'permanent'` removes it from the screen immediately (reported by `getRemovedRows()`). Either way the server itself is untouched — the grid only records the choice. `deleteRow(i, { permanent })` overrides this per call |
+| `deleteMode` | `'mark' \| 'permanent'` | `'mark'` | What `deleteRow()` does to a **server** row when the call doesn't say: `'mark'` dims it with a strikethrough and keeps it on screen (reported by `getDeletedRows()`); `'permanent'` removes it from the screen immediately (reported by `getRemovedRows()`). Either way the server itself is untouched; the grid only records the choice. `deleteRow(i, { permanent })` overrides this per call |
 | `rowContextMenuItems` | `false \| string[]` | `undefined` (all shown) | Narrows which items appear in the row-number gutter's right-click menu. `false` disables it entirely; an array keeps only the named keys: `'row-insert-above'`, `'row-insert-below'`, `'row-insert-top'`, `'row-insert-bottom'`, `'row-delete'` (the last one covers mark/permanent/undelete together, since which renders is row state, not a host choice) |
 | `colContextMenuItems` | `false \| string[]` | `undefined` (all shown) | Narrows which items appear in the column header's right-click menu. Same shape as `rowContextMenuItems`. Valid keys: `'freeze'`, `'freeze-right'`, `'visibility'`, `'insert-left'`, `'insert-right'`, `'delete'` |
 | `cellContextMenuItems` | `false \| string[]` | `undefined` (all shown) | Narrows which items appear in the plain-cell right-click menu. Valid keys: `'col-insert-left'`, `'col-insert-right'`, `'col-delete'`, `'row-insert-below'`, `'row-delete'` |
 | `cellContextMenuExtraItems` | `(ctx) => {label, onClick, disabled?}[] \| null` | `undefined` | Adds custom items to the plain-cell right-click menu, after whichever built-ins `cellContextMenuItems` left in place. Called fresh every time the menu opens for a cell; `ctx` carries `row`/`col`/`field`/`rowData`/`clientX`/`clientY` |
-| `columnDefs` | `ColumnDef[]` | `undefined` | Per-column definitions (type, editor, validation, etc. — see the sections below) |
+| `columnDefs` | `ColumnDef[]` | `undefined` | Per-column definitions (type, editor, validation, etc.; see the sections below) |
 | `headerRows` | `HeaderRowDef[][]` | `undefined` | Explicitly defines multi-level header groups. Takes priority over auto-generation from `columnDefs[].group` when set |
 | `showRowNumbers` | `boolean` | `true` | Shows a row-number column on the left. Required for `rowReorder` |
 | `rowNumberWidth` | `number` | `50` | Width of the row-number column, in pixels |
@@ -56,7 +56,7 @@ nav_order: 3
 | `ariaLabel` | `string` | `undefined` | `aria-label` of the grid container (defaults to `i18n.ariaGrid` if omitted) |
 | `rowHighlighter` | `(rowData, rowIndex) => string \| null` | `undefined` | Callback that conditionally sets a row's background color. Called on every render |
 | `cellBackground` | `(rowData, rowIndex, field, colIndex) => string \| null` | `undefined` | Callback that conditionally sets a cell's background color. Painted above `rowHighlighter` and below cell content |
-| `cellDecorator` | `(ctx, args) => void` | `undefined` | Draws directly on the canvas on top of a cell's content — for a small corner mark, icon, or badge. Called for every visible, loaded cell on every render (`ctx` is the `CanvasRenderingContext2D`; `args` adds `field` to the usual `x`/`y`/`w`/`h`/`rowIndex`/`colIndex` renderer args). Exceptions are caught and logged, and don't interrupt rendering |
+| `cellDecorator` | `(ctx, args) => void` | `undefined` | Draws directly on the canvas on top of a cell's content, for a small corner mark, icon, or badge. Called for every visible, loaded cell on every render (`ctx` is the `CanvasRenderingContext2D`; `args` adds `field` to the usual `x`/`y`/`w`/`h`/`rowIndex`/`colIndex` renderer args). Exceptions are caught and logged, and don't interrupt rendering |
 | `cellTooltip` | `(rowData, rowIndex, field, colIndex) => string \| null` | `undefined` | Custom tooltip text shown immediately (no hover delay) while the pointer idles over a cell. Takes priority over the built-in overflow-text tooltip, but a validation error on the cell still wins over this |
 | `onSelectionChange` | `Function` | `undefined` | Cell/range selection change callback (`null` = selection cleared) |
 | `onSort` | `Function` | `undefined` | Sort applied/cleared callback `(sorts: {field,dir}[] \| null) => void` |
@@ -82,7 +82,7 @@ fetchMeta: (state?: GridFilterState | null) => Promise<{
 }>
 ```
 
-`state` is the sort/filter/quick-filter the grid wants applied — the same shape `fetchData`
+`state` is the sort/filter/quick-filter the grid wants applied, the same shape `fetchData`
 receives (see below). A `fetchMeta` that ignores it still works, it just always reports the
 unfiltered total, which makes the scrollbar/row count wrong the moment a filter or sort is active.
 
@@ -103,7 +103,7 @@ interface GridFilterState {
 }
 ```
 
-JHGrid never filters or sorts data itself — it only tracks *what* the user asked for (which
+JHGrid never filters or sorts data itself; it only tracks *what* the user asked for (which
 column, which values, which direction) and hands that to `fetchMeta`/`fetchData` as `state` on
 every call. Applying it (a `WHERE`/`ORDER BY` on a real backend, or an `Array.filter`/`sort` for
 an in-memory source) is entirely the host's responsibility; a callback that ignores `state`
@@ -116,7 +116,7 @@ Row objects must use the **same keys** as the `columns` array returned by `fetch
 // fetchData → { "rows": [{ "name": "Alice", "age": 30, "city": "Seoul" }] }
 ```
 
-### `fetchPage` — single-callback alternative
+### `fetchPage`: single-callback alternative
 
 For a backend that already returns a page of rows *and* the total count together in one round
 trip (e.g. a SQL `COUNT(*) OVER()` alongside the paged query), `fetchPage` collapses
@@ -153,7 +153,7 @@ leaves those two in charge and `fetchPage` is ignored.
 
 ### Local Array Data (`data`)
 
-For a dataset that already fits in memory — prototyping, a small/medium lookup table, tests —
+For a dataset that already fits in memory (prototyping, a small/medium lookup table, tests)
 pass a plain array via `data` instead of writing `fetchMeta`/`fetchData` yourself. Columns are
 inferred from `columnDefs` if given, else from the keys of `data[0]`.
 
@@ -169,7 +169,7 @@ const grid = new JHGrid({
 ```
 
 Filtering, sorting, and the quick filter are applied against the array directly (same semantics a
-server-backed `fetchMeta`/`fetchData` is expected to implement — see `onFilter`/`onSort`). This
+server-backed `fetchMeta`/`fetchData` is expected to implement; see `onFilter`/`onSort`). This
 re-scans the whole array on every state change with no indexing, so it's meant for small/medium
 datasets; a large dataset still belongs behind `fetchMeta`/`fetchData` against a real, indexed
 backend. `refresh()` re-reads the same array reference, so mutating it externally and calling
@@ -183,7 +183,7 @@ Ignored if `fetchMeta`/`fetchData` is also provided.
 
 The default is continuous virtual scrolling, but setting the `pagination` option switches to a
 classic page-based UI. Each page shows exactly `pageSize` rows, and scrolling only happens within
-that page — moving to the next/previous page only happens via the auto-rendered pager bar at the
+that page; moving to the next/previous page only happens via the auto-rendered pager bar at the
 bottom (`«`, `‹`, page numbers, `›`, `»`) or via `goToPage()`/`nextPage()`/`prevPage()`.
 
 ![Pager bar below a paginated grid](images/pagination.png)
@@ -203,7 +203,7 @@ grid.getPageCount();
 ```
 
 Every public API that deals with row indices (`getEdits()`, `onCellChange`, etc.) always uses
-**absolute indices relative to the entire dataset**, regardless of pagination — pagination only
+**absolute indices relative to the entire dataset**, regardless of pagination. Pagination only
 limits what's scrolled/visible at once, it never changes how rows are addressed.
 
 `pageSize` is fixed at construction time and cannot be changed at runtime.
@@ -217,7 +217,7 @@ further down (`type`/`editor` under [Column Types](#column-types-date--richtext-
 `validation` under [`isValid()`/`getInvalidCells()`/`validateAll()`](#isvalid--getinvalidcells--validateall),
 `button` under [Button Columns](#button-columns-type-button), `headerCheckbox` under
 [Row Selection](#row-selection-rowselection--header-checkbox), `group` under
-[Multi-Level Header Groups](#multi-level-header-groups-columndefsgroup)) — this table is the
+[Multi-Level Header Groups](#multi-level-header-groups-columndefsgroup)); this table is the
 complete field list in one place.
 
 | Field | Type | Description |
@@ -233,12 +233,12 @@ complete field list in one place.
 | `editor` | `string \| (ctx) => {value, remove}` | A `CellEditors` key, or a custom editor factory. Overrides the editor `type` would otherwise select |
 | `editorOptions` | `object` | Options forwarded to the named `CellEditors` factory when `editor` is a string key |
 | `format` | `string` | Date format for `type: 'date'` columns (e.g. `'YYYY-MM-DD'`). Applied to both rendering and clipboard copy |
-| `options` | `DropdownOption[] \| (rowData) => DropdownOption[]` | Option list for `type: 'dropdown'`/`'multiselect'` — a string array, `{value,label}` array, or a function computing options per row |
+| `options` | `DropdownOption[] \| (rowData) => DropdownOption[]` | Option list for `type: 'dropdown'`/`'multiselect'`: a string array, `{value,label}` array, or a function computing options per row |
 | `editable` | `boolean` | Per-column override of `opts.editableCols`. Only meaningful to make a column *excluded* by `editableCols` editable anyway, or vice versa |
-| `validation` | `ColumnValidation` | Declarative required/pattern/min/max/length/custom rules — see [validation](#isvalid--getinvalidcells--validateall) |
-| `button` | `ButtonColumnDef` | Button config for `type: 'button'` — see [Button Columns](#button-columns-type-button) |
-| `headerCheckbox` | `boolean` | Draws a select-all checkbox in this column's header — see [Row Selection](#row-selection-rowselection--header-checkbox) |
-| `aggregate` | `'sum' \| 'avg' \| 'count' \| 'min' \| 'max' \| {fn, format?}` | Aggregate function shown in a group-header row/footer. Built-in types cast with `Number(row[field])` and ignore `NaN` (`'count'` counts non-null values instead); a custom `fn(rows, field)` computes the value itself, and `format(value)` controls the display string. **Only meaningful with a row-grouping plugin installed** — without one the value is retained but never drawn anywhere |
+| `validation` | `ColumnValidation` | Declarative required/pattern/min/max/length/custom rules: see [validation](#isvalid--getinvalidcells--validateall) |
+| `button` | `ButtonColumnDef` | Button config for `type: 'button'`: see [Button Columns](#button-columns-type-button) |
+| `headerCheckbox` | `boolean` | Draws a select-all checkbox in this column's header: see [Row Selection](#row-selection-rowselection--header-checkbox) |
+| `aggregate` | `'sum' \| 'avg' \| 'count' \| 'min' \| 'max' \| {fn, format?}` | Aggregate function shown in a group-header row/footer. Built-in types cast with `Number(row[field])` and ignore `NaN` (`'count'` counts non-null values instead); a custom `fn(rows, field)` computes the value itself, and `format(value)` controls the display string. **Only meaningful with a row-grouping plugin installed**: without one the value is retained but never drawn anywhere |
 
 ---
 
@@ -252,7 +252,7 @@ grid.refresh();
 ```
 
 ### `repaint()`
-Schedules a redraw without touching data, scroll position, edits, filters, or sort — for when
+Schedules a redraw without touching data, scroll position, edits, filters, or sort, for when
 something a `cellBackground`/`rowHighlighter`/`cellDecorator` callback reads changed *outside*
 the grid (some other host state) and the next frame needs to reflect it. Much cheaper than
 `refresh()` when the underlying data hasn't actually changed.
@@ -309,7 +309,7 @@ grid.setCellValue(3, 'active', 'false'); // sets row 3's 'active' column to 'fal
 ```
 
 ### `setCellValues(entries)`
-Bulk counterpart to `setCellValue()` — applies every entry through the same edit/validation/undo
+Bulk counterpart to `setCellValue()`, applies every entry through the same edit/validation/undo
 pipeline as a single edit/undo step and one redraw, instead of one redraw per cell. Use this for
 large-scale updates (e.g. a header checkbox toggling every currently-filtered row) where looping
 `setCellValue()` would redraw once per row. Throws under the same conditions as `setCellValue()`.
@@ -324,7 +324,7 @@ grid.setCellValues([
 
 > **Performance note:** even batched, this still runs the full edit/validation pipeline once per
 > entry. Applying it to a very large number of rows at once (hundreds of thousands or more) can
-> take a long time and block the main thread while it runs — see the performance note under
+> take a long time and block the main thread while it runs; see the performance note under
 > [`Delete`](interaction.md) for a concrete measurement of the same underlying cost at that scale.
 
 ### `undo()` / `redo()`
@@ -343,8 +343,8 @@ if (grid.canUndo()) { /* ... */ }
 ### `isValid()` / `getInvalidCells()` / `validateAll()`
 Checks for violations of a column's declared `validation` rules. Automatically checked whenever
 an edit is committed, and shown with a red border (plus an error-message tooltip on hover).
-`validateAll()` is meant for a one-shot bulk check before saving, and — like `autoFitColumns()`/
-`printGrid()` — only checks currently loaded (cached) rows.
+`validateAll()` is meant for a one-shot bulk check before saving, and, like `autoFitColumns()`/
+`printGrid()`, only checks currently loaded (cached) rows.
 
 ```js
 const grid = new JHGrid({
@@ -380,7 +380,7 @@ a cell-selection border (since it's an action target, not a selected data cell).
 `label` function returns `null`/`''`, no button is drawn for that row.
 
 Use `setCellValue()` alongside an action that actually changes another column's value (e.g.
-toggling active/inactive) — the example below toggles the `active` checkbox column via a button,
+toggling active/inactive); the example below toggles the `active` checkbox column via a button,
 and the button's own label/color update immediately based on that value.
 
 ```js
@@ -436,7 +436,7 @@ directly in code with `setHeaderCheckbox(field, checked)` / `getHeaderCheckbox(f
 ### Set Filter / Quick Filter
 
 Filters by a checkbox list of a column's distinct values in the header filter panel (based on
-currently loaded rows, capped at 200 — automatically falls back to plain text search above that).
+currently loaded rows, capped at 200 (automatically falls back to plain text search above that).
 
 ![Header filter panel: sort buttons and a checkbox list of distinct values](images/filter-panel.png)
 
@@ -450,7 +450,7 @@ grid.setFilterValues('status', null); // clears the filter
 Above that 200-value cap the panel falls back to a plain substring box, because the column's values
 could not be enumerated from the rows in memory. Give it a way to look them up and that box becomes
 a **tag picker** instead: the user types, picks from what the lookup returns, and each pick becomes
-a chip. Chips are combined with **OR** and applied as a `string[]` — the same shape the checklist
+a chip. Chips are combined with **OR** and applied as a `string[]`, the same shape the checklist
 already sends, so `fetchData`, `getState()`, and `onFilter` need no changes.
 
 ```js
@@ -467,14 +467,14 @@ against a large column is the most expensive query this control can issue and th
 answer it can get; below the threshold the panel says so and still offers the substring fallback,
 which needs no lookup at all. Set it to `1` for the pre-existing behaviour.
 
-Return however many matched — the panel builds at most 50 rows regardless and reports the rest as
+Return however many matched; the panel builds at most 50 rows regardless and reports the rest as
 "+N more, narrow the search". A one-letter query against a large column would otherwise mean
 thousands of DOM nodes built on every keystroke, which is a freeze rather than a long list, and no
 220px dropdown can show them anyway. A `LIMIT` on your side still saves the transfer.
 
 Picking a value drops it into the tray, clears the box and leaves the caret there, so the next value
 starts with a fresh search. The list keeps the same height whether or not any chips have been
-collected yet — it is the tray below that gives way when the panel runs short of room, since chips
+collected yet; it is the tray below that gives way when the panel runs short of room, since chips
 are what you already chose rather than what you are reading.
 
 A column that was once too large to enumerate keeps its search box for the life of the grid. The
@@ -487,8 +487,8 @@ Columns small enough to enumerate keep their checklist, which is more precise th
 
 If the typed text matches nothing the lookup knows about, the list still offers a **contains "…"**
 entry that falls back to today's substring filter and arrives as a plain `string`. A column carries
-exact values *or* a substring, never both — the filter map holds one value per field and the two
-mean different things — so picking the fallback clears the tags and shows its own dashed chip.
+exact values *or* a substring, never both; the filter map holds one value per field and the two
+mean different things, so picking the fallback clears the tags and shows its own dashed chip.
 
 Chips wrap and then scroll rather than growing the panel off-screen, and a value too long for the
 panel is ellipsized with the full text in its `title`. Nothing is applied until **Apply**: filtering
@@ -527,22 +527,22 @@ grid.addRow({ name: 'New' }, { index: 0 });  // insert at the front
 grid.deleteRow(3);      // marks row 3 as deleted (strikethrough, undoable)
 grid.undeleteRow(3);    // clears the deletion mark
 
-grid.getNewRows();      // rows added this session — use this to send new-insert requests to the server
+grid.getNewRows();      // rows added this session, use this to send new-insert requests to the server
 grid.getDeletedRows();  // server indices of rows marked for deletion (see the note below)
 ```
 
 By default `deleteRow()` **marks** a server row (dims it with a strikethrough, keeps it on
-screen, and reports it via `getDeletedRows()`) rather than removing it — this is the `deleteMode`
+screen, and reports it via `getDeletedRows()`) rather than removing it; this is the `deleteMode`
 constructor option, `'mark'` by default. Pass `{ permanent: true }` (or set `deleteMode:
 'permanent'` for the whole grid) to take the row off the screen immediately instead:
 
 ```js
 grid.deleteRow(3, { permanent: true }); // removed from the screen right away
-grid.getRemovedRows(); // server indices removed this way — separate from getDeletedRows()
+grid.getRemovedRows(); // server indices removed this way, separate from getDeletedRows()
 grid.undeleteRow(3);   // brings a permanently-removed row back too
 ```
 
-A row added via `addRow()` ignores all of this — it was never sent anywhere, so `deleteRow()` on
+A row added via `addRow()` ignores all of this; it was never sent anywhere, so `deleteRow()` on
 it just removes it outright regardless of `deleteMode`.
 
 `getDeletedRows()`/`getRemovedRows()` report **server indices**, not screen positions: a row
@@ -588,7 +588,7 @@ localStorage.setItem('gridState', JSON.stringify(state));
 grid.setState(JSON.parse(localStorage.getItem('gridState')));
 ```
 A `setState()` call is recorded as a single undoable action. `setState()` returns a `Promise` that
-resolves once the grid is actually showing that state — if the snapshot carries `sorts`,
+resolves once the grid is actually showing that state; if the snapshot carries `sorts`,
 `filters`, or `quickFilter`, those only describe what the *server* should return, so the grid
 re-fetches and the promise waits for the answer. A snapshot that only moves columns around
 resolves immediately, since there's nothing to ask for. Unknown fields are ignored, so a snapshot
@@ -603,14 +603,14 @@ taken with an older version of the grid still applies as far as it goes.
 | `hiddenColumns` | `string[]` | Currently hidden fields |
 | `frozenCols` / `frozenColsRight` | `number` | Current frozen-column counts |
 | `sorts` | `{field, dir}[]` | Active sort(s) |
-| `filters` | `Record<string, string \| string[]>` | Active per-column filters — `string` (substring match) or `string[]` (Set filter) |
+| `filters` | `Record<string, string \| string[]>` | Active per-column filters: `string` (substring match) or `string[]` (Set filter) |
 | `quickFilter` | `string` | Active quick-filter term, `''` when inactive |
 | `selectedRows` | `number[]` | Currently selected row indices (`rowSelection` mode) |
 | `headerCheckboxState` | `Record<string, boolean>` | Checked state of every `headerCheckbox` column's header checkbox |
 | `localColumns` | `ColumnDef[]` | Columns added via `addColumn()` not yet committed (see `getNewColumns()`/`commitColumns()`) |
 | `deletedColumns` | `string[]` | Server columns marked deleted via `deleteColumn()`, not yet committed (see `getDeletedColumns()`) |
-| `rowChanges` | `object` | Unsaved row work — see below |
-| `grouping` / `treeData` / `colorFilters` | varies | Always present (as `null` when unused) even without the plugin that gives them meaning — a plain `getState()`/`setState()` round-trip preserves them regardless. Only a row-grouping/tree-data/color-filter plugin actually reads or writes them |
+| `rowChanges` | `object` | Unsaved row work: see below |
+| `grouping` / `treeData` / `colorFilters` | varies | Always present (as `null` when unused) even without the plugin that gives them meaning; a plain `getState()`/`setState()` round-trip preserves them regardless. Only a row-grouping/tree-data/color-filter plugin actually reads or writes them |
 
 `rowChanges` is the row counterpart of `localColumns`/`deletedColumns`, keyed by **server index**
 throughout (never screen position, since a snapshot is meant to outlive whatever arrangement
@@ -619,11 +619,11 @@ produced it):
 | `rowChanges` field | Type | Description |
 |---|---|---|
 | `added` | `{anchor, data, edits}[]` | Rows from `addRow()`. `anchor` is the server index the row sits in front of (equal to the row count when appended at the end) |
-| `removed` | `number[]` | Server indices removed via `deleteRow(i, { permanent: true })` — see `getRemovedRows()` |
-| `marked` | `number[]` | Server indices marked for deletion — see `getDeletedRows()` |
+| `removed` | `number[]` | Server indices removed via `deleteRow(i, { permanent: true })`: see `getRemovedRows()` |
+| `marked` | `number[]` | Server indices marked for deletion: see `getDeletedRows()` |
 | `edits` | `Record<number, Record<string, string>>` | Unsaved cell edits on server rows, `serverIndex -> field -> value` |
 
-`setState()` treats `rowChanges` as a full replacement, not an addition — restoring the same
+`setState()` treats `rowChanges` as a full replacement, not an addition; restoring the same
 snapshot twice doesn't duplicate rows. Restoring against changed server data names different
 records by index, the same caveat that applies to `filters` naming fields that may no longer exist.
 
@@ -641,7 +641,7 @@ For a host that saves as the user goes (auto-save on commit) rather than in one 
 (scroll position, filters, sort, selection) that `refresh()` does.
 
 ```js
-grid.getOriginalRowData(3); // row 3's pre-edit snapshot — what getRowData(3) returned before
+grid.getOriginalRowData(3); // row 3's pre-edit snapshot: what getRowData(3) returned before
                              // any unsaved edits, independent of later addRow()/deleteRow() calls
 grid.isNewRow(3);           // true if row 3 came from addRow() and has no server counterpart yet
 ```
@@ -667,7 +667,7 @@ async function createRow(rowIndex) {
 ```
 
 `acknowledgeSave()` is a no-op if `isNewRow(rowIndex)` is true (a brand-new row has no server slot
-yet to patch — use `acknowledgeInsert()` for that case instead, which returns `false` if
+yet to patch; use `acknowledgeInsert()` for that case instead, which returns `false` if
 `rowIndex` wasn't actually a local/unsaved row).
 
 ### Multi-Level Header Groups (`columnDefs[].group`)
@@ -683,7 +683,7 @@ columnDefs: [
 ],
 ```
 For finer control, define header rows explicitly with the `headerRows` option instead of
-`columnDefs[].group`. `headerRows` is `HeaderRowDef[][]` — an array of header rows, each an array
+`columnDefs[].group`. `headerRows` is `HeaderRowDef[][]`: an array of header rows, each an array
 of group cells for that row:
 
 ```js
@@ -720,7 +720,7 @@ import { JHGrid, KO_I18N } from '../dist/jhgrid.esm.js';
 const grid = new JHGrid({
   container: '#grid',
   fetchMeta, fetchData,
-  locale: 'ko',                 // or 'ko-KR' — defaults to 'en-US'
+  locale: 'ko',                 // or 'ko-KR' (defaults to 'en-US')
   i18n: { ...KO_I18N, loading: 'Loading…' }, // override specific strings only
 });
 ```
@@ -736,7 +736,7 @@ const grid = new JHGrid({
     row && field === 'score' && row.score < 60 ? '#fee2e2' : null,
 });
 ```
-Both callbacks are called on every render (for visible rows/cells), so keep them lightweight —
+Both callbacks are called on every render (for visible rows/cells), so keep them lightweight;
 exceptions thrown in `cellBackground` are logged and ignored, and don't block rendering.
 
 ### Row Drag Reorder (`rowReorder`)
@@ -757,7 +757,7 @@ const grid = new JHGrid({
 ### Built-in Cell Renderers (`CellRenderers`)
 
 Assign any of these to `columnDefs[i].renderer` (either the string key or a call to the factory
-directly — both are equivalent, but calling it yourself lets you pass options):
+directly; both are equivalent, but calling it yourself lets you pass options):
 
 ```js
 import { CellRenderers } from '../dist/jhgrid.esm.js';
@@ -773,14 +773,14 @@ columnDefs: [
 | `progressBar({ max?, showLabel? })` | `max` (default `100`), `showLabel` (default `false`) | A filled bar sized to `value / max`, with an optional percentage label |
 | `badge({ colorMap? })` | `colorMap: Record<value, {bg?, fg?}>` | A pill-shaped tag per distinct value, colored per `colorMap` (falls back to a neutral gray for values not listed) |
 | `checkmark({ trueColor?, falseColor?, showFalse? })` | colors + whether to draw anything for a false-y value | A ✓/✗ glyph instead of raw `'true'`/`'false'` text |
-| `image({ fit?, radius? })` | `fit: 'cover' \| 'contain'` (default `'cover'`), `radius` (corner radius, px) | Renders the cell value as an image URL — see the `type: 'image'` note below for caching/decoding details |
+| `image({ fit?, radius? })` | `fit: 'cover' \| 'contain'` (default `'cover'`), `radius` (corner radius, px) | Renders the cell value as an image URL: see the `type: 'image'` note below for caching/decoding details |
 | `number({ locale?, decimals? })` | BCP-47 `locale`, fixed `decimals` | `Intl.NumberFormat`-based number formatting |
-| `date({ format?, locale?, dateStyle?, align? })` | `format`: a `YYYY`/`MM`/`DD`/`HH`/`mm`/`ss` pattern, or `'locale'` to format via `Intl.DateTimeFormat` | Date formatting — pattern-based by default, locale-aware when `format: 'locale'` |
+| `date({ format?, locale?, dateStyle?, align? })` | `format`: a `YYYY`/`MM`/`DD`/`HH`/`mm`/`ss` pattern, or `'locale'` to format via `Intl.DateTimeFormat` | Date formatting: pattern-based by default, locale-aware when `format: 'locale'` |
 | `currency({ locale?, currency? })` | BCP-47 `locale`, ISO 4217 `currency` code | `Intl.NumberFormat`-based currency formatting |
 | `dropdown({ placeholder? })` | placeholder text for an empty value | Current value + a `▾` arrow, matching the dropdown editor's affordance |
 | `multiselect({ placeholder? })` | placeholder text for an empty selection | Selected values joined + a `▾` arrow |
 | `checkbox({ checkedColor?, size? })` | box color and size (px) | A checked/unchecked box glyph |
-| `button({ label?, disabled?, variant? })` | same shape as `columnDefs[i].button` (see [Button Columns](#button-columns-type-button)) | Renders the cell as a clickable button — this is what `type: 'button'` uses internally |
+| `button({ label?, disabled?, variant? })` | same shape as `columnDefs[i].button` (see [Button Columns](#button-columns-type-button)) | Renders the cell as a clickable button; this is what `type: 'button'` uses internally |
 
 `locale` on `number`/`date`/`currency` falls back to `theme.locale` (set via the top-level
 `locale` constructor option) when omitted, so most grids never need to pass it per-column.
@@ -792,7 +792,7 @@ double-click needed):
 ![Multiselect editor open, showing checkboxes for each option](images/multiselect-editor.png)
 
 Register your own under a string key with `registerCellRenderer(name, factory)` (and the editor
-counterpart, `registerCellEditor`) — see the custom-editor example below for the matching factory
+counterpart, `registerCellEditor`), see the custom-editor example below for the matching factory
 shape.
 
 ### Column Types: `date` / `richtext` / `image`, and Custom Editors/Renderers
@@ -808,26 +808,26 @@ columnDefs: [
 ],
 ```
 
-- `type: 'date'` — Uses a native `<input type="date">` editor (or `datetime-local` if
+- `type: 'date'`: uses a native `<input type="date">` editor (or `datetime-local` if
   `editorOptions: { mode: 'datetime-local' }` is set) and `CellRenderers.date({ format: 'locale' })`
   for display. `editorOptions.min`/`max` are passed straight through as that `<input>`'s `min`/`max`
   attributes. Combined with `validation: { min, max }`, values are compared as date strings (not numbers).
 
   ![Native date input open on a cell](images/date-picker.png)
-- `type: 'richtext'` — Double-clicking a cell opens a `contenteditable` editor with a bold/italic/
+- `type: 'richtext'`: double-clicking a cell opens a `contenteditable` editor with a bold/italic/
   underline/strikethrough toolbar. The stored value is a sanitized HTML string made up only of
   `<b>/<i>/<u>/<s>` tags, and the grid draws it on the canvas as a **single line** (line breaks,
-  lists, and block elements aren't supported — to match the fixed row-height model). This string is
+  lists, and block elements aren't supported, to match the fixed row-height model). This string is
   copied as-is to CSV/clipboard.
 
   ![Rich-text editor toolbar open above a cell](images/richtext-editor.png)
-- `type: 'image'` — Interprets the cell value as an image URL and draws it with
+- `type: 'image'`: interprets the cell value as an image URL and draws it with
   `CellRenderers.image({ fit: 'cover' | 'contain', radius })`. Decoding is done via `fetch()` +
   `createImageBitmap(blob, { resizeWidth, resizeHeight })`, sized to fit the cell's display size, so
-  memory usage stays low regardless of the source resolution — and the same URL is reused across
+  memory usage stays low regardless of the source resolution, and the same URL is reused across
   grids via a page-wide LRU cache (50MB budget). Redraws automatically once the async load finishes.
 
-To build your own cell editor, assign a function to `columnDefs[i].editor` — the same way `renderer`
+To build your own cell editor, assign a function to `columnDefs[i].editor`, the same way `renderer`
 accepts a function:
 
 ```js
@@ -861,7 +861,7 @@ columnDefs: [{ field: 'favoriteColor', editor: 'color', renderer: 'color' }]
 
 ### Data Export (`exportCsv` / `printGrid`)
 
-By default, both APIs export only the **currently loaded/cached chunks** — pass `{ full: true }`
+By default, both APIs export only the **currently loaded/cached chunks**: pass `{ full: true }`
 to export the entire server-side dataset instead (re-fetches every page while preserving the
 current filter/sort conditions).
 

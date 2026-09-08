@@ -31,11 +31,11 @@ const grid = new JHGrid({
 
 ### Canvas tokens
 
-Everything below is painted directly on the `<canvas>` — the grid body, header, selection,
+Everything below is painted directly on the `<canvas>`: the grid body, header, selection,
 scrollbars, and cell state indicators. `theme` is the only way to set most of them; two
 (`selectionColor`, `fontFamily`) are also bridged to a `--jhg-*` CSS variable because DOM overlays
 (the filter panel's "Apply" button, cell editors) borrow them for visual consistency with the
-canvas — see the note under the table below.
+canvas; see the note under the table below.
 
 | Key | Default | Description |
 |---|---|---|
@@ -76,7 +76,7 @@ canvas — see the note under the table below.
 | `fontSize` | `13` | Font size for all text (px) |
 | `headerFontSize` | defaults to `fontSize` | Header cell font size (px) |
 | `fontFamily` | `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif` | Font family for all text |
-| `locale` | `'en-US'` | Default BCP-47 tag used by `CellRenderers.number/date/currency` when a column doesn't pin its own `locale`. Not a visual token — this is set via `JHGridOptions.locale` |
+| `locale` | `'en-US'` | Default BCP-47 tag used by `CellRenderers.number/date/currency` when a column doesn't pin its own `locale`. Not a visual token; this is set via `JHGridOptions.locale` |
 | `invalidCellBorder` | `#dc2626` | Outline drawn around a cell whose value fails its column's `validation` |
 | `deletedRowFill` | `rgba(239,68,68,0.10)` | Background of a row marked deleted by `deleteRow()` but not yet committed |
 | `deletedRowStrike` | `rgba(239,68,68,0.55)` | Strikethrough color for text in a row marked deleted |
@@ -86,7 +86,7 @@ canvas — see the note under the table below.
 
 `dragIndicatorFill`/`dragIndicatorLine`/`deletedRowFill`/`deletedRowStrike`/
 `invalidCellBorder` are automatically remapped to system colors in high-contrast (`forced-colors`)
-mode — visibility in high-contrast mode is preserved even with a custom theme applied.
+mode; visibility in high-contrast mode is preserved even with a custom theme applied.
 
 `selectionColor` doubles as the DOM overlays' accent color via `--jhg-accent` (e.g. the filter
 panel's "Apply" button and the sort-direction toggle), and `fontFamily` is mirrored to
@@ -94,10 +94,10 @@ panel's "Apply" button and the sort-direction toggle), and `fontFamily` is mirro
 
 ### DOM surface tokens
 
-These style the parts of the grid that are real DOM rather than canvas — the filter panel,
+These style the parts of the grid that are real DOM rather than canvas: the filter panel,
 context menus, the column chooser, cell editors, and the pager. `theme` reaches them the same way
 as the canvas tokens above, but each is *also* bridged to a `--jhg-*` CSS custom property (see
-[Styling with your own CSS](#styling-with-your-own-css) below) — set the variable in your own
+[Styling with your own CSS](#styling-with-your-own-css) below); set the variable in your own
 stylesheet and it wins over whatever `theme` says, since every one of these is emitted as
 `var(--jhg-…, <theme value>)`.
 
@@ -108,10 +108,10 @@ stylesheet and it wins over whatever `theme` says, since every one of these is e
 | `overlayHeaderBg` | `--jhg-overlay-header-bg` | `#F5F5F5` | Header strip inside a panel or dialog |
 | `overlayDivider` | `--jhg-overlay-divider` | `#E0E0E0` | Hairline between sections of a panel |
 | `overlayText` | `--jhg-overlay-text` | `#212121` | Primary text on those surfaces |
-| `overlayMutedText` | `--jhg-overlay-muted-text` | `#595959` | Secondary text — labels, counts |
+| `overlayMutedText` | `--jhg-overlay-muted-text` | `#595959` | Secondary text (labels, counts) |
 | `overlayHintText` | `--jhg-overlay-hint-text` | `#909090` | Placeholder and hint text |
 | `overlayHoverBg` | `--jhg-overlay-hover-bg` | `#F5F5F5` | Hover background for a row in a list, such as a filter checklist |
-| `overlayItemHoverBg` | `--jhg-overlay-item-hover-bg` | `#F0F0F0` | Hover — and keyboard-focus — background for a menu item |
+| `overlayItemHoverBg` | `--jhg-overlay-item-hover-bg` | `#F0F0F0` | Hover (and keyboard-focus) background for a menu item |
 | `overlayShadow` | `--jhg-overlay-shadow` | `0 4px 16px rgba(0,0,0,0.15)` | Shadow under panels and dialogs |
 | `overlayMenuShadow` | `--jhg-overlay-menu-shadow` | `0 4px 12px rgba(0,0,0,0.15)` | Shadow under context menus, which sit closer to the surface |
 | `overlayAccentText` | `--jhg-overlay-accent-text` | `#FFFFFF` | Text on an accent-filled control, such as the filter panel's apply button |
@@ -124,7 +124,7 @@ stylesheet and it wins over whatever `theme` says, since every one of these is e
 ## Styling with your own CSS
 
 The grid body, header, selection and scrollbars are painted on a `<canvas>`, so CSS cannot reach
-them — those are configured through `theme` above. Everything *around* the grid is real DOM and
+them; those are configured through `theme` above. Everything *around* the grid is real DOM and
 can be styled directly.
 
 Each DOM surface carries a stable class, and the `theme` object is mirrored onto `--jhg-*` custom
@@ -142,7 +142,7 @@ properties scoped to the grid. Overriding a variable in your own CSS wins over t
 | Class | Surface |
 | --- | --- |
 | `.jhg-root` | Grid wrapper (variable scope) |
-| `.jhg-overlay` | Any floating surface — carries the entrance animation |
+| `.jhg-overlay` | Any floating surface; carries the entrance animation |
 | `.jhg-panel` | Filter / sort panel |
 | `.jhg-dialog` | Column visibility chooser |
 | `.jhg-menu` / `.jhg-menu-item` | Context menus and their rows |
@@ -178,20 +178,20 @@ is a **row hover highlight**: the row under the pointer takes the `hoverRowBg` w
 highlight fades as it appears and disappears.
 
 The row it sits on moves *instantly* while only the opacity eases. Fading the movement itself would
-make the highlight trail the pointer while you scan down a column — which reads as the grid being
-slow — and would briefly light two rows at once.
+make the highlight trail the pointer while you scan down a column, which reads as the grid being
+slow, and would briefly light two rows at once.
 
 The **selection box** also travels to its new cell or range instead of jumping (`selectionMoveMs`).
 It deliberately snaps rather than easing whenever easing would put the border somewhere the user is
 actively aiming:
 
-- during a range drag or fill drag — the box has to stay under the pointer;
+- during a range drag or fill drag: the box has to stay under the pointer;
 - when the selection appears from nothing or clears;
 - when a move arrives before the previous one has landed. Held arrow keys repeat far faster than
   the box can cross a cell, so the first step eases and the rest are exact.
 
 **Dragging a column header** lifts its header cell out and carries it under the cursor, and the
-reorder happens live — as the pointer crosses each boundary the columns it displaces slide aside
+reorder happens live: as the pointer crosses each boundary the columns it displaces slide aside
 (`columnSlideMs`), so the grid previews the arrangement it will actually end up in instead of
 rearranging on drop. Outside the drag handler it is still one move: `onColumnReorder` fires once
 with the final order, one undo step covers the whole drag, and <kbd>Esc</kbd> puts the column back.
@@ -212,6 +212,6 @@ new JHGrid({
 });
 ```
 
-Set `theme.hoverRowBg` to a falsy value to turn the highlight off entirely — the grid then does no
+Set `theme.hoverRowBg` to a falsy value to turn the highlight off entirely; the grid then does no
 hover tracking or repainting at all. Both durations are forced to `0` under
 `prefers-reduced-motion: reduce`, which removes the easing but keeps the highlight and the box.

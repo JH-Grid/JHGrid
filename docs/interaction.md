@@ -28,7 +28,7 @@ nav_order: 5
 
 | Key | Action |
 |---|---|
-| `Ctrl+C` | Copy selected cell(s)/range — range is copied in TSV format |
+| `Ctrl+C` | Copy selected cell(s)/range: range is copied in TSV format |
 | `Ctrl+V` | Paste starting from the selection (only applied to editable columns) |
 | `Ctrl+Z` | Undo |
 | `Ctrl+Y` / `Ctrl+Shift+Z` | Redo |
@@ -43,4 +43,4 @@ nav_order: 5
 > **Performance note:** `Ctrl+A` on a very large dataset (hundreds of thousands of rows or more)
 > selects the entire used range, and `Delete` on that selection clears every cell in it
 > synchronously. On a 1,000,000-row × 14-column grid this has been measured to block the main
-> thread for tens of seconds — there's no debounce or chunking on the clear path yet.
+> thread for tens of seconds; there's no debounce or chunking on the clear path yet.
