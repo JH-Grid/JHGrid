@@ -71,10 +71,10 @@ stay put on the left, **Score** stays put on the right.
     jhgDemoBootError('[unhandled rejection] ' + (e.reason?.message || e.reason) + '\n' + (e.reason?.stack || '')));
 </script>
 <script type="module">
-  // @latest resolves to the newest git tag; pin an exact tag instead for production.
-  // Dynamic import, not a static `import ... from` declaration -- some browsers never fetch a
-  // static import inside an inline module script on this page, leaving it stuck on "Booting…"
-  // with no error at all. A dynamic import resolves reliably instead.
+  /* @latest resolves to the newest git tag; pin an exact tag instead for production.
+     Dynamic import, not a static `import ... from` declaration -- some browsers never fetch a
+     static import inside an inline module script on this page, leaving it stuck on "Booting…"
+     with no error at all. A dynamic import resolves reliably instead. */
   const { JHGrid, CellRenderers } = await import('https://cdn.jsdelivr.net/gh/JH-Grid/JHGrid@latest/dist/jhgrid.esm.js');
 
   const DEPTS  = ['Engineering', 'Sales', 'Marketing', 'Support', 'Design'];
@@ -94,9 +94,9 @@ stay put on the left, **Score** stays put on the right.
     }));
   }
 
-  // ── 1,000,000 rows ─────────────────────────────────────────────────────────
-  // Static dataset, no filter/sort UI here - the point is raw virtualized-scroll
-  // performance, not re-proving the filtering demo below at a different row count.
+  /* ── 1,000,000 rows ─────────────────────────────────────────────────────
+     Static dataset, no filter/sort UI here - the point is raw virtualized-scroll
+     performance, not re-proving the filtering demo below at a different row count. */
   const PERF_ROWS = makeRows(1_000_000);
   const perfStatus = document.getElementById('jhg-demo-perf-status');
   let lastFrame = performance.now();
@@ -123,8 +123,8 @@ stay put on the left, **Score** stays put on the right.
       const now = performance.now();
       const dt = now - lastFrame;
       lastFrame = now;
-      // Exponential moving average so one slow frame (e.g. a chunk fetch) doesn't
-      // make the readout flicker - smoothed frame time is what the eye actually sees.
+      /* Exponential moving average so one slow frame (e.g. a chunk fetch) doesn't
+         make the readout flicker - smoothed frame time is what the eye actually sees. */
       frameEma = frameEma ? frameEma * 0.9 + dt * 0.1 : dt;
     },
   });
@@ -138,7 +138,7 @@ stay put on the left, **Score** stays put on the right.
     }, 500);
   });
 
-  // ── Editing ────────────────────────────────────────────────────────────────
+  /* ── Editing ─────────────────────────────────────────────────────────── */
   new JHGrid({
     container: '#jhg-demo-edit',
     width: 620, height: 260, responsive: true,
@@ -154,7 +154,7 @@ stay put on the left, **Score** stays put on the right.
     ],
   });
 
-  // ── Filtering ──────────────────────────────────────────────────────────────
+  /* ── Filtering ──────────────────────────────────────────────────────── */
   const filterGrid = new JHGrid({
     container: '#jhg-demo-filter',
     width: 620, height: 260, responsive: true,
@@ -172,9 +172,9 @@ stay put on the left, **Score** stays put on the right.
     filterGrid.setQuickFilter(e.target.value);
   });
 
-  // ── Frozen columns ─────────────────────────────────────────────────────────
-  // Ten columns at 120-150px each add up to well past the 620px card, so the grid
-  // actually needs to scroll horizontally for the pinned edges to mean anything.
+  /* ── Frozen columns ─────────────────────────────────────────────────────
+     Ten columns at 120-150px each add up to well past the 620px card, so the grid
+     actually needs to scroll horizontally for the pinned edges to mean anything. */
   new JHGrid({
     container: '#jhg-demo-frozen',
     width: 620, height: 260, responsive: true,
