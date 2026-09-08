@@ -2659,6 +2659,7 @@ var CellEditors = {
           e.stopPropagation();
           ctx.insertLineBreak();
         } else if (e.key === "Enter") {
+          if (e.isComposing || e.keyCode === 229) return;
           e.preventDefault();
           e.stopPropagation();
           ctx.commit();
@@ -2722,6 +2723,7 @@ var CellEditors = {
           return;
         }
         if (e.key === "Enter") {
+          if (e.isComposing || e.keyCode === 229) return;
           e.preventDefault();
           e.stopPropagation();
           ctx.commit();
@@ -3417,6 +3419,7 @@ var CellEditors = {
       };
       editable.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
+          if (e.isComposing || e.keyCode === 229) return;
           e.preventDefault();
           e.stopPropagation();
           doCommit();
@@ -3569,6 +3572,7 @@ var ColumnValidator = class {
     if (!rules) return this.#checkType(colDef, row, v, label, i18n);
     if (rules.pattern) {
       const re = rules.pattern instanceof RegExp ? rules.pattern : new RegExp(rules.pattern);
+      re.lastIndex = 0;
       if (!re.test(v)) return rules.message ?? i18n.validationPattern(label);
     }
     if (rules.min != null || rules.max != null) {
@@ -3691,7 +3695,7 @@ var PLAIN_NUMBER = /^-?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/;
 function escapeCsvValue(value, delimiter = ",") {
   let s = String(value ?? "");
   if (/^[=+\-@\t\r]/.test(s) && !PLAIN_NUMBER.test(s)) s = "'" + s;
-  return s.includes(delimiter) || s.includes('"') || s.includes("\n") ? `"${s.replace(/"/g, '""')}"` : s;
+  return s.includes(delimiter) || s.includes('"') || s.includes("\n") || s.includes("\r") ? `"${s.replace(/"/g, '""')}"` : s;
 }
 function quoteTsvValue(value, delimiter = "	") {
   const s = String(value ?? "");
@@ -3757,7 +3761,7 @@ function formatCellForDisplay(raw, def, locale) {
     return format.replace("YYYY", Y).replace("YY", YY).replace("MM", M).replace("DD", D).replace("HH", hh).replace("mm", mm).replace("ss", ss);
   }
   if (def?.type === "richtext" && typeof raw === "string") {
-    return raw.replace(/<\/?(b|i|u|s)>/g, "");
+    return raw.replace(/<\/?(b|i|u|s)>/g, "").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
   }
   return raw;
 }
@@ -4298,7 +4302,7 @@ function buildFilterPanelEl({
   colLeft,
   headerH,
   width,
-  height,
+  maxPanelHeight,
   label,
   curVal,
   sortPriority,
@@ -4371,7 +4375,7 @@ function buildFilterPanelEl({
     // buttons stay put no matter how much the middle has to show.
     `display:flex`,
     `flex-direction:column`,
-    ...height ? [`max-height:${Math.max(120, height - panelY - 8)}px`] : []
+    ...maxPanelHeight ? [`max-height:${Math.max(120, maxPanelHeight)}px`] : []
   );
   const headerRow = document.createElement("div");
   headerRow.style.cssText = s("display:flex", "align-items:center", "justify-content:space-between", "padding:9px 12px", `background:${themed(theme, "overlayHeaderBg")}`, `border-bottom:1px solid ${themed(theme, "overlayDivider")}`);
@@ -4797,27 +4801,63 @@ function buildFilterPanelEl({
       row.append(cb, txt);
       return { row, cb };
     };
+    const valuesSearch = document.createElement("input");
+    valuesSearch.type = "text";
+    valuesSearch.placeholder = i18n.filterTagPlaceholder;
+    valuesSearch.setAttribute("aria-label", i18n.filterTagPlaceholder);
+    valuesSearch.className = CLS.editor;
+    valuesSearch.style.cssText = s("width:100%", "padding:6px 8px", `background:${themed(theme, "overlayBg")}`, `border:1px solid ${themed(theme, "overlayBorder")}`, "border-radius:4px", `color:${themed(theme, "overlayText")}`, `font-size:${theme.fontSize}px`, "box-sizing:border-box", "margin-bottom:6px");
     const listBox = document.createElement("div");
     listBox.style.cssText = s("max-height:140px", "overflow-y:auto", "display:flex", "flex-direction:column");
+    const valueRows = [];
     distinctValues.forEach((value) => {
       const checked = selectedSet === null ? true : selectedSet.has(value);
-      const { row, cb } = mkRow(value, value === "" ? i18n.emptyCell : value, checked);
+      const text = value === "" ? i18n.emptyCell : value;
+      const { row, cb } = mkRow(value, text, checked);
       valueCheckboxes.push(cb);
+      valueRows.push({ row, cb, text });
       listBox.appendChild(row);
     });
+    const noMatch = document.createElement("div");
+    noMatch.textContent = i18n.filterTagNoMatch;
+    noMatch.style.cssText = s("padding:5px 8px", "font-size:12px", `color:${themed(theme, "overlayMutedText")}`, "display:none");
+    listBox.appendChild(noMatch);
     const { row: allRow, cb: allCb } = mkRow("", i18n.filterSelectAll, valueCheckboxes.every((cb) => cb.checked));
     delete allCb.dataset.value;
     allCb.dataset.selectAll = "true";
     allRow.style.cssText += `;font-weight:600;border-bottom:1px solid ${themed(theme, "overlayDivider")};padding-bottom:6px;margin-bottom:4px;`;
+    const visibleCbs = () => valueRows.filter((r) => r.row.style.display !== "none").map((r) => r.cb);
+    const syncSelectAll = () => {
+      const vis = visibleCbs();
+      allCb.checked = vis.length > 0 && vis.every((cb) => cb.checked);
+    };
     allCb.addEventListener("change", () => {
-      valueCheckboxes.forEach((cb) => {
+      visibleCbs().forEach((cb) => {
         cb.checked = allCb.checked;
       });
     });
-    valueCheckboxes.forEach((cb) => cb.addEventListener("change", () => {
-      allCb.checked = valueCheckboxes.every((c) => c.checked);
-    }));
-    valuesSection.append(valuesLabel, allRow, listBox);
+    valueCheckboxes.forEach((cb) => cb.addEventListener("change", syncSelectAll));
+    valuesSearch.addEventListener("input", () => {
+      const q = valuesSearch.value.trim().toLowerCase();
+      let anyVisible = false;
+      for (const r of valueRows) {
+        const match = !q || r.text.toLowerCase().includes(q);
+        r.row.style.display = match ? "flex" : "none";
+        anyVisible = anyVisible || match;
+      }
+      noMatch.style.display = anyVisible ? "none" : "block";
+      syncSelectAll();
+    });
+    valuesSearch.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        applyBtn.click();
+      } else if (e.key === "Escape") {
+        onClose();
+      }
+      e.stopPropagation();
+    });
+    valuesSection.append(valuesLabel, valuesSearch, allRow, listBox);
   }
   const actionSection = document.createElement("div");
   actionSection.style.cssText = s("padding:10px 12px", `border-bottom:1px solid ${themed(theme, "overlayDivider")}`);
@@ -5338,11 +5378,18 @@ var RowSelectionPlugin = {
     },
     // Row-index shift on local row insertion (see JHGrid#addRow) — keeps selection attached to
     // the same logical rows rather than the same row indices once everything after the
-    // insertion point shifts down by one.
-    shiftRows(grid, shift) {
+    // insertion point shifts down by one. `drop` (a removal) names a row whose own selection
+    // goes away with it instead of being remapped — `shift(drop) === drop` for the standard
+    // "everything after the removed row moves up one" shift function, so leaving it unfiltered
+    // would silently reattach the selection to whatever row slides up into that now-vacant slot.
+    shiftRows(grid, shift, drop = -1) {
       const s = stateFor(grid);
-      if (s.selectedRows.size > 0) s.selectedRows = new Set([...s.selectedRows].map(shift));
-      if (s.lastSelRow != null) s.lastSelRow = shift(s.lastSelRow);
+      if (s.selectedRows.size > 0) {
+        const next = /* @__PURE__ */ new Set();
+        for (const r of s.selectedRows) if (r !== drop) next.add(shift(r));
+        s.selectedRows = next;
+      }
+      if (s.lastSelRow != null) s.lastSelRow = s.lastSelRow === drop ? null : shift(s.lastSelRow);
     },
     // The actual selection algorithm behind JHGrid#_updateRowSel (row-number click, Enter/Space
     // on a focused row). Single mode toggles a lone row; multi mode supports shift-range and
@@ -6812,7 +6859,7 @@ var JHGrid = class _JHGrid {
   _geo() {
     const { colWidth: defaultColW, scrollbarSize: SB, width: W, height: H } = this._opts;
     const headerH = this._headerH;
-    const frozenCount = Math.max(0, Math.min(this._opts.frozenCols ?? 0, this._columns.length));
+    let frozenCount = Math.max(0, Math.min(this._opts.frozenCols ?? 0, this._columns.length));
     const n = this._columns.length;
     const rowNumW = this._opts.showRowNumbers ? this._opts.rowNumberWidth ?? 50 : 0;
     const colPositions = new Array(n + 1);
@@ -6820,10 +6867,14 @@ var JHGrid = class _JHGrid {
     for (let i = 0; i < n; i++) {
       colPositions[i + 1] = colPositions[i] + (this._columnWidths[i] ?? defaultColW);
     }
-    const frozenWidth = colPositions[frozenCount];
+    let frozenWidth = colPositions[frozenCount];
+    const minMiddleW = Math.min(defaultColW, W);
+    while (frozenCount > 0 && frozenWidth > W - minMiddleW) {
+      frozenCount--;
+      frozenWidth = colPositions[frozenCount];
+    }
     let frozenRightCount = Math.max(0, Math.min(this._opts.frozenColsRight ?? 0, n - frozenCount));
     let frozenRightWidth = colPositions[n] - colPositions[n - frozenRightCount];
-    const minMiddleW = Math.min(defaultColW, W);
     while (frozenRightCount > 0 && frozenWidth + frozenRightWidth > W - minMiddleW) {
       frozenRightCount--;
       frozenRightWidth = colPositions[n] - colPositions[n - frozenRightCount];
@@ -7525,11 +7576,15 @@ var JHGrid = class _JHGrid {
       this._closeFilterPanel();
       this._kbProxy.focus();
     };
+    this._wrapper.style.overflow = "visible";
+    const wrapperTop = this._wrapper.getBoundingClientRect().top;
+    const viewportH = window.innerHeight || document.documentElement.clientHeight;
+    const maxPanelHeight = viewportH - wrapperTop - geo.headerH - 8;
     const el = buildFilterPanelEl({
       colLeft: this._colLeft(col, geo),
       headerH: geo.headerH,
       width: this._opts.width,
-      height: this._opts.height,
+      maxPanelHeight,
       label,
       curVal,
       sortPriority: colSortPriority,
@@ -7629,6 +7684,7 @@ var JHGrid = class _JHGrid {
     this._filterPanel.el.dispatchEvent(new Event("jhg-dispose"));
     this._filterPanel.el.remove();
     this._filterPanel = null;
+    this._wrapper.style.overflow = "hidden";
   }
   // opts.colContextMenuItems narrows which of this menu's items ever appear: `false` turns the
   // menu off entirely, an array keeps only the named ones, omitted keeps today's behavior of
@@ -10783,7 +10839,7 @@ var JHGrid = class _JHGrid {
     this._rowPlan.reset(0);
     this._localColumns.clear();
     this._deletedColumns.clear();
-    this._dm.setFetch(this._opts.fetchData);
+    this._dm.setFetch((page, size) => this._opts.fetchData(page, size, null));
     this._columnWidths = [];
     this._columnWidthMap.clear();
     this._columnOriginalOrder = [];
@@ -10967,8 +11023,8 @@ var JHGrid = class _JHGrid {
         this._deletedRows.add(rowIndex);
       }
       if (this._sel) {
-        const selRow = this._sel.type === "single" ? this._sel.row : this._sel.r1;
-        if (selRow === rowIndex) this._setSel(null);
+        const stale = this._sel.type === "single" ? this._sel.row === rowIndex : this._sel.r1 === rowIndex || this._sel.r2 === rowIndex;
+        if (stale) this._setSel(null);
       }
       this._draw();
     });
@@ -11003,7 +11059,7 @@ var JHGrid = class _JHGrid {
     if (this._sel) {
       this._sel = this._sel.type === "single" ? { ...this._sel, row: shift(this._sel.row) } : { ...this._sel, r1: shift(this._sel.r1), r2: shift(this._sel.r2) };
     }
-    _JHGrid._plugin("rowSelection")?.shiftRows(this, shift);
+    _JHGrid._plugin("rowSelection")?.shiftRows(this, shift, drop);
     if (grow) this._rowLayout.shiftRows(shift);
     else if (drop >= 0) this._rowLayout.deleteRow(drop);
     else this._rowLayout.shiftRows(shift);
@@ -11074,7 +11130,7 @@ var JHGrid = class _JHGrid {
     this._closeNewColumnDialog();
     if (this._cellTooltip) this._cellTooltip.style.display = "none";
     for (const p of _JHGrid._plugins) p.hideTooltip?.(this);
-    this._dm.setFetch(this._opts.fetchData);
+    this._dm.setFetch((page, size) => this._opts.fetchData(page, size, null));
     this._scrollTop = 0;
     this._scrollLeft = 0;
     this._setSel(null);
