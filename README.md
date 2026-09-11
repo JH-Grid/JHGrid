@@ -3,6 +3,9 @@
 High-performance Canvas-based data grid with smooth 2D virtualization.  
 Renders millions of rows and columns with near-zero DOM overhead.
 
+**[▶ Try the live demo](https://jh-grid.github.io/JHGrid/docs/demo)**: 1,000,000-row scroll
+performance, editing, filtering, and frozen columns, running in your browser right now.
+
 ![JH Grid screenshot](docs/images/jhgrid.png)
 
 > This repository distributes the **pre-built bundle** (`jhgrid.esm.js` / `jhgrid.js` /
@@ -50,9 +53,22 @@ Renders millions of rows and columns with near-zero DOM overhead.
 
 ## Installation
 
-> **npm package coming soon.** For now, use one of the two options below.
+### Option A: npm (recommended for bundled apps)
 
-### Option A: Static ES module (no bundler)
+```bash
+npm install @jh-grid/jhgrid-js
+```
+
+```js
+import { JHGrid } from '@jh-grid/jhgrid-js';
+```
+
+The package ships as **ES Modules only** and includes its own TypeScript declarations
+(`index.d.ts`), so no `@types/` package is needed. Any bundler (Vite, webpack, Rollup, esbuild) and
+modern Node ESM can consume it directly. CommonJS `require('@jh-grid/jhgrid-js')` is *not* supported; use a
+dynamic `await import('@jh-grid/jhgrid-js')` if you must load it from a CJS file.
+
+### Option B: Static ES module (no bundler)
 
 `jhgrid.esm.js` is a single self-contained ES module file: deploy it as-is as a static resource
 (e.g. from a Spring Boot static resource path) and import it directly, no build step required:
@@ -63,7 +79,7 @@ Renders millions of rows and columns with near-zero DOM overhead.
 </script>
 ```
 
-### Option B: CDN (single bundled script)
+### Option C: CDN (single bundled script)
 
 `jhgrid.min.js` is an IIFE build served straight from this repository via jsDelivr, no npm
 install required. Everything is exposed on a single global, `JHGrid` (the grid constructor is
@@ -93,7 +109,7 @@ no fetch functions needed:
 <div id="my-grid"></div>
 
 <script type="module">
-import { JHGrid } from './dist/jhgrid.esm.js'; // adjust to wherever you host the file
+import { JHGrid } from '@jh-grid/jhgrid-js';
 
 const grid = new JHGrid({
   container: '#my-grid',
@@ -129,7 +145,7 @@ instead:
 <div id="my-grid"></div>
 
 <script type="module">
-import { JHGrid } from './dist/jhgrid.esm.js'; // adjust to wherever you host the file
+import { JHGrid } from '@jh-grid/jhgrid-js';
 
 const grid = new JHGrid({
   container: '#my-grid',

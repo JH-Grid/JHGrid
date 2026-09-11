@@ -105,19 +105,21 @@ stay put on the left, **Score** stays put on the right.
   const perfGrid = new JHGrid({
     container: '#jhg-demo-perf',
     width: 760, height: 360, responsive: true,
+    editableCols: '*',
     showRowNumbers: true,
     rowSelection: 'multi',
     frozenCols: 1,
     columnDefs: [
-      { field: 'id',     label: 'ID',    width: 70,  align: 'right', renderer: CellRenderers.number() },
-      { field: 'name',   label: 'Name',  width: 140 },
-      { field: 'email',  label: 'Email', width: 220 },
-      { field: 'dept',   label: 'Dept',  width: 120 },
-      { field: 'grade',  label: 'Grade', width: 92 },
-      { field: 'salary', label: 'Salary', width: 130, align: 'right', renderer: CellRenderers.currency({ locale: 'en-US', currency: 'USD' }) },
-      { field: 'score',  label: 'Score', width: 90,  align: 'right' },
+      { field: 'id',     label: 'ID',    width: 70,  align: 'right', group: 'Basic Info', renderer: CellRenderers.number() },
+      { field: 'name',   label: 'Name',  width: 140, group: 'Basic Info' },
+      { field: 'email',  label: 'Email', width: 220, group: 'Basic Info' },
+      { field: 'dept',   label: 'Dept',  width: 130, group: 'Attributes', type: 'dropdown', options: DEPTS },
+      { field: 'grade',  label: 'Grade', width: 92,  group: 'Attributes' },
+      { field: 'active', label: 'Active', width: 90, group: 'Attributes', type: 'checkbox' },
+      { field: 'salary', label: 'Salary', width: 130, align: 'right', group: 'Performance', renderer: CellRenderers.currency({ locale: 'en-US', currency: 'USD' }) },
+      { field: 'score',  label: 'Score', width: 90,  align: 'right', group: 'Performance' },
     ],
-    fetchMeta: async () => ({ totalRows: PERF_ROWS.length, columns: ['id', 'name', 'email', 'dept', 'grade', 'salary', 'score'] }),
+    fetchMeta: async () => ({ totalRows: PERF_ROWS.length, columns: ['id', 'name', 'email', 'dept', 'grade', 'active', 'salary', 'score'] }),
     fetchData: async (page, size) => ({ rows: PERF_ROWS.slice(page * size, page * size + size) }),
     onRender: () => {
       const now = performance.now();
@@ -141,7 +143,7 @@ stay put on the left, **Score** stays put on the right.
   /* ── Editing ─────────────────────────────────────────────────────────── */
   new JHGrid({
     container: '#jhg-demo-edit',
-    width: 620, height: 260, responsive: true,
+    width: 620, height: 360, responsive: true,
     editableCols: '*',
     showRowNumbers: true,
     rowSelection: 'multi',
@@ -157,7 +159,7 @@ stay put on the left, **Score** stays put on the right.
   /* ── Filtering ──────────────────────────────────────────────────────── */
   const filterGrid = new JHGrid({
     container: '#jhg-demo-filter',
-    width: 620, height: 260, responsive: true,
+    width: 620, height: 360, responsive: true,
     showRowNumbers: true,
     rowSelection: 'multi',
     data: makeRows(500),
@@ -177,7 +179,7 @@ stay put on the left, **Score** stays put on the right.
      actually needs to scroll horizontally for the pinned edges to mean anything. */
   new JHGrid({
     container: '#jhg-demo-frozen',
-    width: 620, height: 260, responsive: true,
+    width: 620, height: 360, responsive: true,
     showRowNumbers: true,
     rowSelection: 'multi',
     frozenCols: 2,

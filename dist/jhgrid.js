@@ -4354,6 +4354,12 @@ var JHGrid = (() => {
     multiSortEnabled,
     i18n,
     theme,
+    // wrapperHeight + openUpward: when the caller found more room above the header than below (a
+    // grid scrolled to sit low on the page — see _openFilterPanel), the panel anchors its *bottom*
+    // to the header's top edge and grows upward instead of down, same as a native <select> flipping
+    // when it would otherwise overflow the viewport.
+    wrapperHeight,
+    openUpward,
     // Set filter (checkbox list of exact values) — distinctValues is null when the column has too
     // many/no loaded values yet, in which case the panel falls back to the plain text search box
     // below instead of rendering a checklist. selectedValues is the currently-applied array filter
@@ -4378,7 +4384,6 @@ var JHGrid = (() => {
   }) {
     const PANEL_W = 220;
     const panelX = Math.max(0, Math.min(colLeft, width - PANEL_W));
-    const panelY = headerH;
     const s = (...parts) => parts.join(";");
     const btn = (text, action, style) => {
       const b = document.createElement("button");
@@ -4397,7 +4402,10 @@ var JHGrid = (() => {
     el.style.cssText = s(
       `position:absolute`,
       `left:${panelX}px`,
-      `top:${panelY}px`,
+      // Anchoring the bottom edge (instead of top) lets the panel grow upward from the header
+      // without knowing its own height up front — the alternative, computing `top: headerH -
+      // panelHeight`, needs the rendered height before it's laid out.
+      openUpward ? `bottom:${Math.max(0, wrapperHeight - headerH)}px` : `top:${headerH}px`,
       `width:${PANEL_W}px`,
       `background:${themed(theme, "overlayBg")}`,
       `border:1px solid ${themed(theme, "overlayBorder")}`,
@@ -5963,6 +5971,8 @@ ${title ? `<h2>${esc(title)}</h2>` : ""}
   // JHGrid.js
   var ARROWS = { ArrowDown: [1, 0], ArrowUp: [-1, 0], ArrowRight: [0, 1], ArrowLeft: [0, -1] };
   var RESIZE_HIT_W = 5;
+  var RESIZE_HIT_W_TOUCH = 8;
+  var CANVAS_TOUCH_CSS = "touch-action:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;";
   var MIN_COL_W = 30;
   var MIN_ROW_H = 16;
   var LONG_PRESS_MS = 500;
@@ -6384,7 +6394,7 @@ ${title ? `<h2>${esc(title)}</h2>` : ""}
       this._canvas = document.createElement("canvas");
       this._canvas.width = Math.round(width * dpr);
       this._canvas.height = Math.round(height * dpr);
-      this._canvas.style.cssText = `display:block;width:${width}px;height:${height}px;outline:none;`;
+      this._canvas.style.cssText = `display:block;width:${width}px;height:${height}px;outline:none;${CANVAS_TOUCH_CSS}`;
       this._canvas.setAttribute("aria-hidden", "true");
       this._canvas.tabIndex = -1;
       this._canvas.getContext("2d").scale(dpr, dpr);
@@ -6614,7 +6624,7 @@ ${title ? `<h2>${esc(title)}</h2>` : ""}
       this._opts.height = gridHeight;
       this._wrapper.style.width = width + "px";
       this._wrapper.style.height = gridHeight + "px";
-      this._canvas.style.cssText = `display:block;width:${width}px;height:${gridHeight}px;outline:none;`;
+      this._canvas.style.cssText = `display:block;width:${width}px;height:${gridHeight}px;outline:none;${CANVAS_TOUCH_CSS}`;
       const dpr = window.devicePixelRatio || 1;
       this._canvas.width = Math.round(width * dpr);
       this._canvas.height = Math.round(gridHeight * dpr);
@@ -7039,29 +7049,85 @@ ${title ? `<h2>${esc(title)}</h2>` : ""}
     // of, or null. Checks both the hovered row's bottom edge and (falling back, like the column
     // check does with col > 0) the previous row's bottom edge when y lands right at a row's top
     // edge — both branches identify the same boundary line, resolving to "the row above it".
-    _hitRowBoundary(y, geo = this._geo()) {
+    _hitRowBoundary(y, geo = this._geo(), hitW = RESIZE_HIT_W) {
       const { height: H } = this._opts;
       if (y < geo.headerH || y >= H - geo.hSB) return null;
       const relY = y - geo.headerH + this._scrollTop;
       const row = this._rowLayout.rowAt(relY, this._totalRows - 1);
       if (row < 0) return null;
       const bottomY = this._rowLayout.yOf(row + 1) - this._scrollTop + geo.headerH;
-      if (Math.abs(y - bottomY) <= RESIZE_HIT_W) return row;
+      if (Math.abs(y - bottomY) <= hitW) return row;
       if (row > 0) {
         const topY = this._rowLayout.yOf(row) - this._scrollTop + geo.headerH;
-        if (Math.abs(y - topY) <= RESIZE_HIT_W) return row - 1;
+        if (Math.abs(y - topY) <= hitW) return row - 1;
       }
       return null;
     }
-    _hitFillHandle(x, y, geo = this._geo()) {
+    // Vertical/horizontal scrollbar hit test, shared by mousedown and touchstart: grabbing the
+    // thumb arms this._drag (consumed by _updateScrollbarDrag on the matching move handler),
+    // tapping the bare track jump-scrolls straight to that position, same as a native scrollbar.
+    // Returns whether (x, y) was inside either scrollbar's hit area at all, so the caller knows to
+    // stop dispatching (preventDefault + return) instead of falling through to header/cell/pan
+    // handling — without this, a touch on the drawn scrollbar was indistinguishable from a touch
+    // anywhere else on the canvas and just started a generic content-drag pan.
+    _hitScrollbar(x, y, geo) {
+      const { v, h } = geo;
+      if (x >= v.x) {
+        if (y >= v.thumbY && y <= v.thumbY + v.thumbH) {
+          this._drag = { axis: "v", startMouse: y, startScroll: this._scrollTop };
+        } else if (y >= v.y && y <= v.y + v.h) {
+          const ratio = Math.max(0, Math.min(1, (y - v.y - v.thumbH / 2) / (v.h - v.thumbH)));
+          this._scrollTop = geo.minScrollY + ratio * (geo.maxScrollY - geo.minScrollY);
+          this._clamp(geo);
+          this._draw();
+        }
+        return true;
+      }
+      if (y >= h.y) {
+        if (x >= h.thumbX && x <= h.thumbX + h.thumbW) {
+          this._drag = { axis: "h", startMouse: x, startScroll: this._scrollLeft };
+        } else if (x >= h.x && x <= h.x + h.w) {
+          const ratio = Math.max(0, Math.min(1, (x - h.x - h.thumbW / 2) / (h.w - h.thumbW)));
+          this._scrollLeft = ratio * geo.maxScrollX;
+          this._clamp(geo);
+          this._draw();
+        }
+        return true;
+      }
+      return false;
+    }
+    // Applies an in-progress scrollbar thumb drag (this._drag, armed by _hitScrollbar) given the
+    // pointer/touch's current raw canvas coordinates. Shared by mousemove and touchmove so the two
+    // input paths can't drift apart.
+    _updateScrollbarDrag(x, y) {
+      const geo = this._geo();
+      const { v, h } = geo;
+      if (this._drag.axis === "v") {
+        const ratio = (y - this._drag.startMouse) / (v.h - v.thumbH);
+        this._scrollTop = this._drag.startScroll + ratio * (geo.maxScrollY - geo.minScrollY);
+      } else {
+        const ratio = (x - this._drag.startMouse) / (h.w - h.thumbW);
+        this._scrollLeft = this._drag.startScroll + ratio * geo.maxScrollX;
+      }
+      this._clamp(geo);
+      this._scrolling = true;
+      this._dm.setHold(true);
+      clearTimeout(this._scrollEndTimer);
+      this._scrollEndTimer = setTimeout(() => {
+        this._scrolling = false;
+        this._dm.setHold(false);
+        this._schedDraw();
+      }, 150);
+      this._schedDraw();
+    }
+    _hitFillHandle(x, y, geo = this._geo(), hitW = RESIZE_HIT_W) {
       if (!this._sel) return false;
       const { headerH, colPositions } = geo;
       const selR2 = this._sel.type === "single" ? this._sel.row : this._sel.r2;
       const selC2 = this._sel.type === "single" ? this._sel.col : this._sel.c2;
       const handleX = this._colLeft(selC2, geo) + (colPositions[selC2 + 1] - colPositions[selC2]);
       const handleY = this._rowLayout.yOf(selR2 + 1) - this._scrollTop + headerH;
-      const HIT = 5;
-      return Math.abs(x - handleX) <= HIT && Math.abs(y - handleY) <= HIT;
+      return Math.abs(x - handleX) <= hitW && Math.abs(y - handleY) <= hitW;
     }
     _colLeft(col, geo) {
       return colScreenX(col, geo, this._scrollLeft);
@@ -7619,10 +7685,16 @@ ${title ? `<h2>${esc(title)}</h2>` : ""}
       this._wrapper.style.overflow = "visible";
       const wrapperTop = this._wrapper.getBoundingClientRect().top;
       const viewportH = window.innerHeight || document.documentElement.clientHeight;
-      const maxPanelHeight = viewportH - wrapperTop - geo.headerH - 8;
+      const spaceBelow = viewportH - wrapperTop - geo.headerH - 8;
+      const spaceAbove = wrapperTop - 8;
+      const PANEL_MIN_USABLE = 260;
+      const openUpward = spaceBelow < PANEL_MIN_USABLE && spaceAbove > spaceBelow;
+      const maxPanelHeight = openUpward ? spaceAbove : spaceBelow;
       const el = buildFilterPanelEl({
         colLeft: this._colLeft(col, geo),
         headerH: geo.headerH,
+        wrapperHeight: this._opts.height,
+        openUpward,
         width: this._opts.width,
         maxPanelHeight,
         label,
@@ -9676,7 +9748,6 @@ ${title ? `<h2>${esc(title)}</h2>` : ""}
       ev.mousedown = (e) => {
         const { x, y } = this._xy(e);
         const geo = this._geo();
-        const { v, h } = geo;
         const suppressReopenCell = this._suppressReopenCell;
         this._suppressReopenCell = null;
         if (this._editing) this._commitEdit();
@@ -9692,27 +9763,7 @@ ${title ? `<h2>${esc(title)}</h2>` : ""}
             if (withinSel) return;
           }
         }
-        if (x >= v.x) {
-          if (y >= v.thumbY && y <= v.thumbY + v.thumbH) {
-            this._drag = { axis: "v", startMouse: y, startScroll: this._scrollTop };
-          } else if (y >= v.y && y <= v.y + v.h) {
-            const ratio = Math.max(0, Math.min(1, (y - v.y - v.thumbH / 2) / (v.h - v.thumbH)));
-            this._scrollTop = geo.minScrollY + ratio * (geo.maxScrollY - geo.minScrollY);
-            this._clamp(geo);
-            this._draw();
-          }
-          e.preventDefault();
-          return;
-        }
-        if (y >= h.y) {
-          if (x >= h.thumbX && x <= h.thumbX + h.thumbW) {
-            this._drag = { axis: "h", startMouse: x, startScroll: this._scrollLeft };
-          } else if (x >= h.x && x <= h.x + h.w) {
-            const ratio = Math.max(0, Math.min(1, (x - h.x - h.thumbW / 2) / (h.w - h.thumbW)));
-            this._scrollLeft = ratio * geo.maxScrollX;
-            this._clamp(geo);
-            this._draw();
-          }
+        if (this._hitScrollbar(x, y, geo)) {
           e.preventDefault();
           return;
         }
@@ -9924,25 +9975,7 @@ ${title ? `<h2>${esc(title)}</h2>` : ""}
           }
         }
         if (this._drag) {
-          const geo = this._geo();
-          const { v, h } = geo;
-          if (this._drag.axis === "v") {
-            const ratio = (y - this._drag.startMouse) / (v.h - v.thumbH);
-            this._scrollTop = this._drag.startScroll + ratio * (geo.maxScrollY - geo.minScrollY);
-          } else {
-            const ratio = (x - this._drag.startMouse) / (h.w - h.thumbW);
-            this._scrollLeft = this._drag.startScroll + ratio * geo.maxScrollX;
-          }
-          this._clamp(geo);
-          this._scrolling = true;
-          this._dm.setHold(true);
-          clearTimeout(this._scrollEndTimer);
-          this._scrollEndTimer = setTimeout(() => {
-            this._scrolling = false;
-            this._dm.setHold(false);
-            this._schedDraw();
-          }, 150);
-          this._schedDraw();
+          this._updateScrollbarDrag(x, y);
           return;
         }
         if (this._selDragging) {
@@ -10329,19 +10362,23 @@ ${title ? `<h2>${esc(title)}</h2>` : ""}
           this._rowTap = null;
           const geo = this._geo();
           const headerH = geo.headerH;
+          if (this._hitScrollbar(x, y, geo)) {
+            e.preventDefault();
+            return;
+          }
           if (y >= 0 && y < headerH) {
             const col = this._hitHeader(x, geo);
             if (col !== null) {
               const colW = geo.colPositions[col + 1] - geo.colPositions[col];
               const colRight = this._colLeft(col, geo) + colW;
               const filterIconX = colRight - FILTER_ICON_W;
-              if (Math.abs(x - colRight) <= RESIZE_HIT_W) {
+              if (Math.abs(x - colRight) <= RESIZE_HIT_W_TOUCH) {
                 this._colResize = { col, startX: x, startWidth: colW, undoBefore: this._snapshotStructural() };
                 e.preventDefault();
                 return;
               }
               const colLeft = this._colLeft(col, geo);
-              if (col > 0 && Math.abs(x - colLeft) <= RESIZE_HIT_W) {
+              if (col > 0 && Math.abs(x - colLeft) <= RESIZE_HIT_W_TOUCH) {
                 const prevColW = geo.colPositions[col] - geo.colPositions[col - 1];
                 this._colResize = { col: col - 1, startX: x, startWidth: prevColW, undoBefore: this._snapshotStructural() };
                 e.preventDefault();
@@ -10353,7 +10390,7 @@ ${title ? `<h2>${esc(title)}</h2>` : ""}
                 const _hcbCx = this._colLeft(col, geo) + _hcbPad + 6;
                 const _hcbCell = computeHeaderCells(this._opts.headerRows, this._columns, this._opts.columnLetterHeader).find((c) => c.isLeaf && c.col === col);
                 const _hcbCy = _hcbCell ? _hcbCell.row * this._opts.headerHeight + _hcbCell.rowspan * this._opts.headerHeight / 2 : headerH - this._opts.headerHeight / 2;
-                if (Math.abs(x - _hcbCx) <= 9 && Math.abs(y - _hcbCy) <= 9) {
+                if (Math.abs(x - _hcbCx) <= RESIZE_HIT_W_TOUCH && Math.abs(y - _hcbCy) <= RESIZE_HIT_W_TOUCH) {
                   const _hcbChecked = !(this._headerCheckboxState.get(_hcbField) ?? false);
                   this._headerCheckboxState.set(_hcbField, _hcbChecked);
                   this._draw();
@@ -10383,7 +10420,7 @@ ${title ? `<h2>${esc(title)}</h2>` : ""}
               return;
             }
           }
-          const boundaryRow = geo.rowNumW > 0 && x < geo.rowNumW && y >= geo.headerH ? this._hitRowBoundary(y, geo) : null;
+          const boundaryRow = geo.rowNumW > 0 && x < geo.rowNumW && y >= geo.headerH ? this._hitRowBoundary(y, geo, RESIZE_HIT_W_TOUCH) : null;
           if (boundaryRow !== null) {
             this._rowResize = { row: boundaryRow, startY: y, startHeight: this._rowLayout.heightOf(boundaryRow), undoBefore: this._snapshotStructural() };
             e.preventDefault();
@@ -10405,7 +10442,7 @@ ${title ? `<h2>${esc(title)}</h2>` : ""}
             }
             return;
           }
-          if (this._sel && this._hitFillHandle(x, y, geo)) {
+          if (this._sel && this._hitFillHandle(x, y, geo, RESIZE_HIT_W_TOUCH)) {
             this._fillDrag = { sel: this._sel };
             this._fillPreview = null;
             e.preventDefault();
@@ -10440,6 +10477,14 @@ ${title ? `<h2>${esc(title)}</h2>` : ""}
           const rect2 = this._canvas.getBoundingClientRect();
           this._updateStructuralGesture(t.clientX - rect2.left, t.clientY - rect2.top);
           if (this._colDrag?.active || this._rowDrag?.active) this._cancelLongPress();
+          e.preventDefault();
+          return;
+        }
+        if (this._drag) {
+          if (!e.touches.length) return;
+          const t = e.touches[0];
+          const rect2 = this._canvas.getBoundingClientRect();
+          this._updateScrollbarDrag(t.clientX - rect2.left, t.clientY - rect2.top);
           e.preventDefault();
           return;
         }
@@ -10479,6 +10524,10 @@ ${title ? `<h2>${esc(title)}</h2>` : ""}
       ev.touchend = (e) => {
         this._cancelLongPress();
         if (this._finalizeStructuralGesture()) return;
+        if (this._drag) {
+          this._drag = null;
+          return;
+        }
         if (this._rowTap) {
           const { row, ctrlKey, shiftKey } = this._rowTap;
           this._rowTap = null;
@@ -11908,7 +11957,7 @@ ${title ? `<h2>${esc(title)}</h2>` : ""}
   JHGrid.use(RowSelectionPlugin);
 
   // index.js
-  var VERSION = "0.1.0";
+  var VERSION = "0.1.1";
   var SUPPORTED_BROWSERS = {
     chrome: 99,
     edge: 99,

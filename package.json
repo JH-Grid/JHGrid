@@ -1,0 +1,52 @@
+{
+  "name": "@jh-grid/jhgrid-js",
+  "version": "0.1.1",
+  "description": "High-performance Canvas-based data grid with smooth 2D virtualization.",
+  "keywords": [
+    "grid",
+    "datagrid",
+    "data-grid",
+    "table",
+    "canvas",
+    "virtual-scroll",
+    "virtualization",
+    "spreadsheet"
+  ],
+  "homepage": "https://github.com/JH-Grid/JHGrid#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JH-Grid/JHGrid.git"
+  },
+  "bugs": {
+    "url": "https://github.com/JH-Grid/JHGrid/issues"
+  },
+  "license": "SEE LICENSE IN LICENSE",
+  "type": "module",
+  "main": "./dist/jhgrid.esm.js",
+  "module": "./dist/jhgrid.esm.js",
+  "types": "./index.d.ts",
+  "browser": "./dist/jhgrid.min.js",
+  "unpkg": "./dist/jhgrid.min.js",
+  "jsdelivr": "./dist/jhgrid.min.js",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./dist/jhgrid.esm.js"
+    },
+    "./dist/jhgrid.min.js": "./dist/jhgrid.min.js",
+    "./dist/jhgrid.js": "./dist/jhgrid.js",
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "files": [
+    "index.d.ts",
+    "dist/",
+    "NOTICE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
