@@ -372,6 +372,9 @@ saveBtn.addEventListener('click', async () => {
 ![Validation error: red-bordered cell with an error tooltip](images/validation-error.png)
 
 ### Button Columns (`type: 'button'`)
+
+![Button column rendering Activate/Deactivate pills, colored by the row's active state](images/button-columns.png)
+
 Renders the entire cell as a single clickable button. Activated by mouse click, touch tap, or
 Space/Enter/F2 after selecting the cell, and always works regardless of `editableCols` (since it's
 an action trigger, not a data edit). Shows a pointer cursor on hover, and clicking it does not draw
@@ -447,6 +450,8 @@ grid.setFilterValues('status', null); // clears the filter
 
 ### Tag Filter (`fetchFilterValues`)
 
+![Tag filter panel: a search box with one picked value shown as a chip](images/tag-filter.png)
+
 Above that 200-value cap the panel falls back to a plain substring box, because the column's values
 could not be enumerated from the rows in memory. Give it a way to look them up and that box becomes
 a **tag picker** instead: the user types, picks from what the lookup returns, and each pick becomes
@@ -520,6 +525,8 @@ grid.clearSort();
 
 ### Adding/Deleting Rows (`addRow` / `deleteRow`)
 
+![A row marked deleted: dimmed with a strikethrough, still on screen](images/deleted-row.png)
+
 ```js
 grid.addRow({ name: 'New', age: 0 });        // append at the end
 grid.addRow({ name: 'New' }, { index: 0 });  // insert at the front
@@ -565,6 +572,8 @@ grid.getHiddenColumns();       // string[]
 ```
 
 ### Row Height (`setRowHeight` / `autoFitColumns`)
+
+![One row set to a taller height than its neighbors](images/row-height.png)
 
 ```js
 grid.setRowHeight(3, 40);   // changes only row 3's height to 40px
@@ -672,6 +681,8 @@ yet to patch; use `acknowledgeInsert()` for that case instead, which returns `fa
 
 ### Multi-Level Header Groups (`columnDefs[].group`)
 
+![A "Details" group header spanning the Age and Score columns](images/header-groups.png)
+
 Consecutive columns sharing the same label at a given level are automatically merged into a
 single header group cell.
 
@@ -727,6 +738,8 @@ const grid = new JHGrid({
 
 ### Conditional Styling (`rowHighlighter` / `cellBackground`)
 
+![Rows tinted red by rowHighlighter, with the Score cell additionally tinted by cellBackground](images/conditional-styling.png)
+
 ```js
 const grid = new JHGrid({
   container: '#grid',
@@ -740,6 +753,8 @@ Both callbacks are called on every render (for visible rows/cells), so keep them
 exceptions thrown in `cellBackground` are logged and ignored, and don't block rendering.
 
 ### Row Drag Reorder (`rowReorder`)
+
+![Mid-drag: a row being dragged down through several rows, with a blue insertion line](images/row-drag-reorder.png)
 
 Drag rows by the row-number gutter to reorder them. Unlike column reordering, row data isn't
 always resident in memory under server-side paging, so enabling this scans the entire dataset once
@@ -860,6 +875,8 @@ columnDefs: [{ field: 'favoriteColor', editor: 'color', renderer: 'color' }]
 ```
 
 ### Data Export (`exportCsv` / `printGrid`)
+
+![printGrid()'s popup: a plain HTML table with a Print button, ready for the browser's print dialog](images/print-preview.png)
 
 By default, both APIs export only the **currently loaded/cached chunks**: pass `{ full: true }`
 to export the entire server-side dataset instead (re-fetches every page while preserving the

@@ -44,6 +44,14 @@ var JHGrid = (() => {
     #chunkSize;
     #maxChunks;
     #cache = /* @__PURE__ */ new Map();
+    // 1-entry cache of the chunk getRow() touched last. A bulk row-major walk (e.g. clearing an
+    // entire selection) calls getRow() for every column of the same row back-to-back -- same
+    // chunkIdx every time -- and #chunkSize more rows after that before it changes, so this turns
+    // the overwhelming majority of getRow() calls into a single index comparison instead of a Map
+    // lookup plus the LRU delete+re-insert below. Must be invalidated everywhere #cache forgets a
+    // chunk (#evict, clear) so it can never serve an entry #cache itself no longer considers current.
+    #lastChunkIdx = -1;
+    #lastChunk = null;
     #fetching = /* @__PURE__ */ new Set();
     #failed = /* @__PURE__ */ new Set();
     #failedTimers = /* @__PURE__ */ new Set();
@@ -77,10 +85,13 @@ var JHGrid = (() => {
     // re-request after onChunkLoaded).
     getRow(rowIndex) {
       const chunkIdx = Math.floor(rowIndex / this.#chunkSize);
+      if (chunkIdx === this.#lastChunkIdx) return this.#lastChunk[rowIndex % this.#chunkSize] ?? null;
       if (this.#cache.has(chunkIdx)) {
         const chunk = this.#cache.get(chunkIdx);
         this.#cache.delete(chunkIdx);
         this.#cache.set(chunkIdx, chunk);
+        this.#lastChunkIdx = chunkIdx;
+        this.#lastChunk = chunk;
         return chunk[rowIndex % this.#chunkSize] ?? null;
       }
       this.#request(chunkIdx);
@@ -241,6 +252,10 @@ var JHGrid = (() => {
       while (this.#cache.size > this.#maxChunks) {
         const oldest = this.#cache.keys().next().value;
         this.#cache.delete(oldest);
+        if (oldest === this.#lastChunkIdx) {
+          this.#lastChunkIdx = -1;
+          this.#lastChunk = null;
+        }
       }
     }
     // Returning `false` from `callback` stops the walk. Callers that are looking for an answer
@@ -267,6 +282,8 @@ var JHGrid = (() => {
       this.#failed.clear();
       this.#failedTimers.forEach(clearTimeout);
       this.#failedTimers.clear();
+      this.#lastChunkIdx = -1;
+      this.#lastChunk = null;
     }
   };
 
@@ -8826,19 +8843,19 @@ ${title ? `<h2>${esc(title)}</h2>` : ""}
     }
     _clearSelection() {
       if (!this._sel) return;
-      const pairs = this._sel.type === "single" ? [[this._sel.row, this._sel.col]] : Array.from(
-        { length: this._sel.r2 - this._sel.r1 + 1 },
-        (_, ri) => Array.from(
-          { length: this._sel.c2 - this._sel.c1 + 1 },
-          (_2, ci) => [this._sel.r1 + ri, this._sel.c1 + ci]
-        )
-      ).flat();
+      const single = this._sel.type === "single";
+      const r1 = single ? this._sel.row : this._sel.r1;
+      const r2 = single ? this._sel.row : this._sel.r2;
+      const c1 = single ? this._sel.col : this._sel.c1;
+      const c2 = single ? this._sel.col : this._sel.c2;
+      const editableFields = [];
+      for (let c = c1; c <= c2; c++) {
+        if (this._isEditable(c)) editableFields.push(this._columns[c]);
+      }
       this._editTxnBegin();
-      pairs.forEach(([r, c]) => {
-        if (!this._isEditable(c)) return;
-        const field = this._columns[c];
-        this._setEdit(r, field, "");
-      });
+      for (let r = r1; r <= r2; r++) {
+        for (const field of editableFields) this._setEdit(r, field, "");
+      }
       this._editTxnCommit();
       this._draw();
     }
@@ -9023,11 +9040,15 @@ ${title ? `<h2>${esc(title)}</h2>` : ""}
       const v = data[field];
       return v != null ? String(v) : "";
     }
-    // Re-runs validation for one cell and updates the validator's invalid-cell set.
+    // Re-runs validation for one cell and updates the validator's invalid-cell set. Takes a
+    // "row_field" key -- for callers that only have that (iterating an _edits-shaped Map). Callers
+    // that already have row/field apart (_setEdit, validateAll) should call _revalidateRowField()
+    // directly instead of paying to stringify them together here just to split them back apart.
     _revalidateKey(key) {
       const u = key.indexOf("_");
-      const row = Number(key.slice(0, u));
-      const field = key.slice(u + 1);
+      this._revalidateRowField(Number(key.slice(0, u)), key.slice(u + 1));
+    }
+    _revalidateRowField(row, field) {
       this._validator.revalidate(row, field, this._resolveCellStringValue(row, field));
     }
     // Rebuilds invalid-cell state from scratch based on the current _edits map —
@@ -9062,11 +9083,11 @@ ${title ? `<h2>${esc(title)}</h2>` : ""}
       const validatedFields = this._columns.filter((f) => this._colDefMap.get(f)?.validation);
       if (validatedFields.length > 0) {
         this._dm.forEachLoaded((_, rowIndex) => {
-          validatedFields.forEach((field) => this._revalidateKey(`${rowIndex}_${field}`));
+          validatedFields.forEach((field) => this._revalidateRowField(rowIndex, field));
         });
         this._localRows.forEach((_, i) => {
           const r = this._rowPlan.visualOfLocal(i);
-          validatedFields.forEach((field) => this._revalidateKey(`${r}_${field}`));
+          validatedFields.forEach((field) => this._revalidateRowField(r, field));
         });
       }
       this._draw();
@@ -9093,7 +9114,7 @@ ${title ? `<h2>${esc(title)}</h2>` : ""}
       this._edits.set(key, val);
       this._editedRows.add(row);
       this._opts.onCellChange?.({ row, field, newValue: val, oldValue });
-      this._revalidateKey(key);
+      this._revalidateRowField(row, field);
       this._growRowForMultilineValue(row, val);
     }
     // Excel grows a row's height the moment a cell picks up a line break -- typed (Alt+Enter) or
@@ -11957,7 +11978,7 @@ ${title ? `<h2>${esc(title)}</h2>` : ""}
   JHGrid.use(RowSelectionPlugin);
 
   // index.js
-  var VERSION = "0.1.1";
+  var VERSION = "0.1.2";
   var SUPPORTED_BROWSERS = {
     chrome: 99,
     edge: 99,

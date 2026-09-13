@@ -1,6 +1,6 @@
 name: Publish to npm
 
-# Fires when a version tag (v0.1.1, v0.1.2, ...) is pushed -- the same tag push that already
+# Fires when a version tag (v0.1.2, v0.1.2, ...) is pushed -- the same tag push that already
 # moves jsDelivr's @latest, so one `git push origin vX.Y.Z` now does both.
 on:
   push:
