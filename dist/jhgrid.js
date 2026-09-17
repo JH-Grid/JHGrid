@@ -1404,7 +1404,9 @@ var JHGrid = (() => {
         colPositions,
         hiddenNeighbors,
         headerCheckboxCols,
-        sel
+        sel,
+        frozenWidth,
+        vpW
       );
       ctx.restore();
       if (frozenCount > 0) {
@@ -1432,7 +1434,9 @@ var JHGrid = (() => {
           colPositions,
           hiddenNeighbors,
           headerCheckboxCols,
-          sel
+          sel,
+          0,
+          frozenWidth
         );
         ctx.restore();
       }
@@ -1461,7 +1465,9 @@ var JHGrid = (() => {
           colPositions,
           hiddenNeighbors,
           headerCheckboxCols,
-          sel
+          sel,
+          rightX,
+          frozenRightWidth
         );
         ctx.restore();
       }
@@ -1926,7 +1932,7 @@ var JHGrid = (() => {
     #colX(c, frozenCount, frozenWidth, frozenRightCount, rightX, scrollLeft, colPositions) {
       return colScreenX(c, { frozenCount, frozenWidth, frozenRightCount, rightX, colPositions }, scrollLeft);
     }
-    #drawHeader(labels, aligns, columns, sorts, filters, startCol, endCol, scrollLeft, totalH, rowH, headerRows, theme, frozenCount, frozenWidth, frozenRightCount, rightX, colPositions, hiddenNeighbors, headerCheckboxCols, sel) {
+    #drawHeader(labels, aligns, columns, sorts, filters, startCol, endCol, scrollLeft, totalH, rowH, headerRows, theme, frozenCount, frozenWidth, frozenRightCount, rightX, colPositions, hiddenNeighbors, headerCheckboxCols, sel, clipX = 0, clipW = Infinity) {
       if (startCol > endCol) return;
       const ctx = this.#ctx;
       const padding = theme.cellPadding;
@@ -2000,6 +2006,13 @@ var JHGrid = (() => {
           const visEndCol = Math.min(cell.col + cell.colspan - 1, endCol);
           textCx = colPositions[visStartCol] + xOffset;
           textCw = colPositions[visEndCol + 1] - colPositions[visStartCol];
+          const clipRight = clipX + clipW;
+          if (textCx < clipX) {
+            textCw -= clipX - textCx;
+            textCx = clipX;
+          }
+          if (textCx + textCw > clipRight) textCw = clipRight - textCx;
+          textCw = Math.max(0, textCw);
         }
         const align = cell.isLeaf ? aligns?.[cell.col] ?? "left" : cell.align ?? "center";
         const iconRsv = cell.isLeaf ? FILTER_ICON_W + 4 : 0;
@@ -2379,7 +2392,7 @@ var JHGrid = (() => {
       }
       ctx.restore();
     }
-    #drawScrollbars({ v, h, SB, vSB = SB, hSB = SB, frozenWidth = 0, frozenRightWidth = 0, rightX = 0 }, theme, W, H) {
+    #drawScrollbars({ v, h, SB, vSB = SB, hSB = SB, frozenWidth = 0, frozenRightWidth = 0, rightX = 0, headerH = 0 }, theme, W, H) {
       if (!vSB && !hSB) return;
       const ctx = this.#ctx;
       const r = theme.scrollbarRadius;
@@ -2387,6 +2400,7 @@ var JHGrid = (() => {
       if (vSB > 0 && hSB > 0) ctx.fillRect(W - vSB, H - hSB, vSB, hSB);
       if (hSB > 0 && frozenWidth > 0) ctx.fillRect(0, H - hSB, frozenWidth, hSB);
       if (hSB > 0 && frozenRightWidth > 0) ctx.fillRect(rightX, H - hSB, frozenRightWidth, hSB);
+      if (vSB > 0 && headerH > 0) ctx.fillRect(W - vSB, 0, vSB, headerH);
       ctx.fillRect(v.x, v.y, v.w, v.h);
       ctx.fillStyle = theme.scrollbarThumb;
       this.#roundRect(v.x + 2, v.thumbY + 2, v.w - 4, v.thumbH - 4, r);
@@ -4842,7 +4856,11 @@ var JHGrid = (() => {
         clearTimeout(debounce);
         seq++;
       });
-      readTags = () => state.contains !== null ? { contains: state.contains } : { values: [...state.tags] };
+      readTags = () => {
+        const pending = tagInput.value.trim();
+        if (pending && state.contains === null && state.tags.length === 0) setContains(pending);
+        return state.contains !== null ? { contains: state.contains } : { values: [...state.tags] };
+      };
     }
     let valuesSection = null;
     const valueCheckboxes = [];
@@ -4903,11 +4921,13 @@ var JHGrid = (() => {
       });
       valueCheckboxes.forEach((cb) => cb.addEventListener("change", syncSelectAll));
       valuesSearch.addEventListener("input", () => {
+        const pristine = valueCheckboxes.every((cb) => cb.checked);
         const q = valuesSearch.value.trim().toLowerCase();
         let anyVisible = false;
         for (const r of valueRows) {
           const match = !q || r.text.toLowerCase().includes(q);
           r.row.style.display = match ? "flex" : "none";
+          if (pristine) r.cb.checked = match;
           anyVisible = anyVisible || match;
         }
         noMatch.style.display = anyVisible ? "none" : "block";
@@ -7449,7 +7469,14 @@ ${title ? `<h2>${esc(title)}</h2>` : ""}
         this._pendingLocalState = null;
         return Promise.resolve();
       }
-      this._dm.setFetch((page, size) => this._opts.fetchData(page, size, state));
+      const fetchData = this._isLocalData ? /* @__PURE__ */ (() => {
+        let all = null;
+        return (page, size) => {
+          all ??= this._opts.fetchData(0, Number.MAX_SAFE_INTEGER, state).then((r) => r.rows);
+          return all.then((rows) => ({ rows: rows.slice(page * size, page * size + size) }));
+        };
+      })() : (page, size) => this._opts.fetchData(page, size, state);
+      this._dm.setFetch(fetchData);
       return this._boot(state);
     }
     // Where the sweep sits across the loading bars, 0..1, or null to leave them flat.
@@ -11978,7 +12005,7 @@ ${title ? `<h2>${esc(title)}</h2>` : ""}
   JHGrid.use(RowSelectionPlugin);
 
   // index.js
-  var VERSION = "0.1.2";
+  var VERSION = "0.1.3";
   var SUPPORTED_BROWSERS = {
     chrome: 99,
     edge: 99,

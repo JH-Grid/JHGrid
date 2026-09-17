@@ -16,38 +16,18 @@ performance, editing, filtering, and frozen columns, running in your browser rig
 
 ## Features
 
-- Smooth rendering via `requestAnimationFrame` + Canvas 2D, synced to your display's native refresh rate (60Hz, 120Hz, 144Hz, etc.), not capped at 60fps
-- 2D virtual scrolling: only visible cells are drawn
-- Chunk-based async data loading with prefetch & cache
-- HiDPI / Retina display support (devicePixelRatio scaling)
-- Draggable scrollbars (vertical + horizontal)
-- Left/right frozen columns (`frozenCols` / `frozenColsRight`)
-- **Cell click**: single cell selection with blue border highlight
-- **Cell drag**: multi-cell range selection with fill overlay
-- **Row selection**: single/multi row selection (`rowSelection: 'single' | 'multi'`), with an optional select-all header checkbox (`columnDefs[].headerCheckbox`)
-- **Row drag reorder**: drag rows by the row-number gutter (`rowReorder: true`)
-- **Double-click to edit**: per-column editable/readonly control
-- **Ctrl+C / Ctrl+V**: copy & paste (single cell or range, TSV format)
-- **Ctrl+Z / Ctrl+Y**: undo / redo (cell edits, row/column add/delete)
-- **Column validation**: declarative required/pattern/min/max/length/custom rules with red-border + tooltip error display (`min`/`max` compare chronologically on a `type: 'date'` column)
-- **In-cell action buttons**: `type: 'button'` columns render a clickable pill per row (e.g. "Delete", "Approve") independent of `editableCols`
-- **Date / rich-text / image cell types**: `type: 'date'` opens a native date/datetime picker; `type: 'richtext'` opens an inline bold/italic/underline/strikethrough editor; `type: 'image'` renders a cell image (`fit: 'cover' | 'contain'`, size-aware decoding, shared LRU cache), plus a pluggable `CellEditors`/`CellRenderers` registry (`registerCellEditor()`/`registerCellRenderer()`) for fully custom editors and renderers
-- **Set filter**: checkbox list of a column's distinct values in the header filter panel (`setFilterValues()`)
-- **Quick filter**: global cross-column search term (`setQuickFilter()` / `getQuickFilter()` / `clearQuickFilter()`)
-- **Single-column sort**: `setSort()` / `removeSort()` / `clearSort()`
-- **Row / column CRUD**: `addRow()`/`deleteRow()`/`undeleteRow()`, `addColumn()`/`deleteColumn()`/`undeleteColumn()`, with matching `getNew*()`/`getDeleted*()` accessors for diff-based saves
-- **Column hide/show**: `hideColumn()` / `showColumn()` / `isColumnVisible()` / `getHiddenColumns()`, plus per-row/column resize (`setRowHeight()`, `autoFitColumns()`)
-- **Multi-level header groups**: `columnDefs[].group` (or explicit `headerRows`) merges header cells across levels
-- **Per-row / per-cell styling callbacks**: `rowHighlighter` / `cellBackground` for conditional formatting
-- **State snapshot/restore**: `getState()` / `setState()` for saving and restoring grid state (filters, sort, column order/visibility, edits)
-- **Built-in localization**: `locale` option with bundled `KO_I18N` / `JA_I18N` / `ZH_I18N` text packs, per-key `i18n` overrides, and locale-aware number/date/currency cell rendering
-- **Accessibility**: ARIA labeling, keyboard-navigable header/row focus, and automatic high-contrast (`forced-colors`) theme remapping
-- **CSV export + print preview**: `exportCsv()`, `printGrid()`
-- **Arrow key navigation**: keyboard-driven cell movement
-- **Enter / Tab**: commit edit and move to next row / column
-- Text overflow with ellipsis (`…`): O(log n) binary search
-- Fully themeable
-- Zero dependencies
+- **Canvas rendering + 2D virtualization** — smooth at 60/120/144Hz, HiDPI-aware
+- **Large-data loading** — chunk-based async loading with prefetch & cache
+- **Frozen columns & scrollbars** — left/right freezing with draggable vertical/horizontal scrollbars
+- **Selection & row operations** — cell/range selection, single/multi row selection, row drag reorder
+- **Editing** — inline editing, validation, undo/redo, TSV copy & paste
+- **Rich cell types** — dropdown, multiselect, checkbox, date, richtext, image, button, plus custom editors/renderers
+- **Filtering & sorting** — set filter, quick filter, single-column sort
+- **CRUD & change tracking** — row/column add/delete with diff-based persistence
+- **Headers & styling** — multi-level headers, conditional row/cell styling
+- **State & export** — state snapshot/restore, CSV export, print preview
+- **i18n & accessibility** — KO/JA/ZH localization, ARIA, keyboard navigation, high-contrast support
+- **Zero dependencies & theming** — fully themeable with no runtime dependencies
 
 ---
 

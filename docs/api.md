@@ -168,6 +168,8 @@ const grid = new JHGrid({
 });
 ```
 
+![The exact two-row example above, rendered](images/local-array-data.png)
+
 Filtering, sorting, and the quick filter are applied against the array directly (same semantics a
 server-backed `fetchMeta`/`fetchData` is expected to implement; see `onFilter`/`onSort`). This
 re-scans the whole array on every state change with no indexing, so it's meant for small/medium
