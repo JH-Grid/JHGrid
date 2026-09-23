@@ -273,7 +273,7 @@ the select below `destroy()`s the current instance and constructs a new one with
     selectionColor: '#60a5fa', selectionFill: 'rgba(96,165,250,0.18)',
     selRowBg: 'rgba(96,165,250,0.14)', scrollbarBg: '#111827', scrollbarThumb: '#4b5563',
     frozenBorder: '#4b5563',
-    hoverRowBg: 'rgba(255,255,255,0.055)',  // default wash is a black tint, invisible over dark rows
+    hoverRowBg: 'rgba(255,255,255,0.055)',  /* default wash is a black tint, invisible over dark rows */
   };
 
   let themeGrid = null;
@@ -282,8 +282,8 @@ the select below `destroy()`s the current instance and constructs a new one with
     themeGrid = new JHGrid({
       container: '#jhg-demo-theme',
       width: 560, height: 360,
-      editableCols: '*',   // otherwise every column gets the default readonlyCellBg (#F5F5F5) tint,
-                            // which the dark theme below doesn't override and would wash out on rowEven/rowOdd
+      editableCols: '*',   /* otherwise every column gets the default readonlyCellBg (#F5F5F5) tint,
+                              which the dark theme below doesn't override and would wash out on rowEven/rowOdd */
       showRowNumbers: true,
       rowSelection: 'multi',
       data: makeRows(30),
