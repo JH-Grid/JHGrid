@@ -1,13 +1,13 @@
 ---
-title: Theming
+title: Themes
 nav_order: 5
 ---
 
-# Theming
+# Themes
 
 [← Docs index](README.md)
 
-Pass a `theme` object to override any default value:
+Pass a `theme` object to override any default value. → [Live light/dark example](demo.md#themes)
 
 ```js
 const grid = new JHGrid({

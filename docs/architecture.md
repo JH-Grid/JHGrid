@@ -69,7 +69,7 @@ render surface) rather than for everyday app code; most consumers never need the
 - **`Renderer`** / **`DataManager`**: the two internal classes above, exported so advanced code
   can drive the canvas-drawing or chunk-caching logic independently of a full `JHGrid` instance.
 - **`DEFAULT_THEME`**: the fully-resolved theme object every `GridTheme` partial is merged
-  against (i.e. every default value listed in [Theming](theming.md), as one object).
+  against (i.e. every default value listed in [Themes](theming.md), as one object).
 - **`computeHeaderCells(headerRows, columns)`**: the same merged-header layout engine the canvas
   header draw uses internally, exposed so a custom exporter (e.g. one writing to a spreadsheet
   format) can reproduce identical multi-level header spans instead of re-deriving them.

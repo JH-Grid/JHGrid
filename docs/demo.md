@@ -7,10 +7,11 @@ nav_order: 3
 
 [← Docs index](README.md)
 
-Four small grids, each isolating one thing: raw scroll performance at 1,000,000 rows, inline
-editing, filtering, and frozen columns. Every grid on this page is a real `JHGrid` instance
-loaded straight from the [jsDelivr CDN build](../README.md#option-c-cdn-single-bundled-script);
-view source on this page to see the exact code.
+Seven small grids, each isolating one thing: raw scroll performance at 1,000,000 rows, inline
+editing, filtering, frozen columns, row selection, column types/renderers, and theming. Every grid
+on this page is a real `JHGrid` instance loaded straight from the
+[jsDelivr CDN build](../README.md#option-c-cdn-single-bundled-script); view source on this page to
+see the exact code.
 
 <div id="jhg-demo-boot-error" style="display:none;background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;
      padding:10px 12px;border-radius:8px;margin:12px 0;font:12px/1.6 ui-monospace,Menlo,monospace;
@@ -23,14 +24,14 @@ don't exist in the DOM. Drag the scrollbar to jump around; nothing gets slower t
 go.
 
 <p id="jhg-demo-perf-status" class="jhg-demo-status">Booting…</p>
-<div class="jhg-demo-card" id="jhg-demo-perf"></div>
+<div class="jhg-demo-card" id="jhg-demo-perf" style="width:760px"></div>
 
 ## Editing
 
 Double-click a cell to edit it. `Ctrl+Z` / `Ctrl+Y` undo and redo; `Ctrl+C` / `Ctrl+V` copy and
 paste a range.
 
-<div class="jhg-demo-card" id="jhg-demo-edit"></div>
+<div class="jhg-demo-card" id="jhg-demo-edit" style="width:650px"></div>
 
 ## Filtering
 
@@ -41,14 +42,45 @@ panel.
 <div class="jhg-demo-bar">
   <input type="text" id="jhg-demo-filter-input" placeholder="Quick filter…">
 </div>
-<div class="jhg-demo-card" id="jhg-demo-filter"></div>
+<div class="jhg-demo-card" id="jhg-demo-filter" style="width:520px"></div>
 
 ## Frozen columns
 
 `frozenCols` / `frozenColsRight` pin columns to either edge. Scroll right: **Name** and **Dept**
 stay put on the left, **Score** stays put on the right.
 
-<div class="jhg-demo-card" id="jhg-demo-frozen"></div>
+<div class="jhg-demo-card" id="jhg-demo-frozen" style="width:620px"></div>
+
+## Row selection
+
+`rowSelection: 'multi'` selects rows by clicking the row-number gutter on the left (`Ctrl`/`Shift`
+to extend a selection, the same as a spreadsheet). `onRowSelect(rows)` fires with the selected row
+indices on every change; `getSelectedRows()` reads them back at any time.
+
+<p id="jhg-demo-selection-status" class="jhg-demo-status">0 selected</p>
+<div class="jhg-demo-card" id="jhg-demo-selection" style="width:520px"></div>
+
+## Column types & renderers
+
+`columnDefs[i].type` picks a built-in editor/renderer pair (`dropdown`, `checkbox`, `date`, ...);
+`renderer` swaps in a different [`CellRenderers`](api.md#cellrenderers) entry without changing the
+editor, e.g. formatting a plain number as currency.
+
+<div class="jhg-demo-card" id="jhg-demo-types" style="width:560px"></div>
+
+## Themes
+
+`theme` is a constructor-only option, so switching themes at runtime means rebuilding the grid:
+the select below `destroy()`s the current instance and constructs a new one with the chosen
+`theme` object — see [Themes](theming.md) for the full token reference.
+
+<div class="jhg-demo-bar">
+  <select id="jhg-demo-theme-select">
+    <option value="light">Light (default)</option>
+    <option value="dark">Dark</option>
+  </select>
+</div>
+<div class="jhg-demo-card" id="jhg-demo-theme" style="width:560px"></div>
 
 <style>
   .jhg-demo-card { border: 1px solid #dfe3e8; border-radius: 8px; display: block;
@@ -58,6 +90,8 @@ stay put on the left, **Score** stays put on the right.
   .jhg-demo-bar { margin: 0 0 8px; }
   .jhg-demo-bar input { font-size: 13px; padding: 6px 10px; border: 1px solid #dfe3e8;
                          border-radius: 6px; min-width: 220px; }
+  .jhg-demo-bar select { font-size: 13px; padding: 6px 10px; border: 1px solid #dfe3e8;
+                          border-radius: 6px; }
 </style>
 
 <script>
@@ -105,7 +139,7 @@ stay put on the left, **Score** stays put on the right.
 
   const perfGrid = new JHGrid({
     container: '#jhg-demo-perf',
-    width: 760, height: 360, responsive: true,
+    width: 760, height: 360,
     editableCols: '*',
     showRowNumbers: true,
     rowSelection: 'multi',
@@ -144,7 +178,7 @@ stay put on the left, **Score** stays put on the right.
   /* ── Editing ─────────────────────────────────────────────────────────── */
   new JHGrid({
     container: '#jhg-demo-edit',
-    width: 620, height: 360, responsive: true,
+    width: 650, height: 360,
     editableCols: '*',
     showRowNumbers: true,
     rowSelection: 'multi',
@@ -160,7 +194,7 @@ stay put on the left, **Score** stays put on the right.
   /* ── Filtering ──────────────────────────────────────────────────────── */
   const filterGrid = new JHGrid({
     container: '#jhg-demo-filter',
-    width: 620, height: 360, responsive: true,
+    width: 520, height: 360,
     showRowNumbers: true,
     rowSelection: 'multi',
     data: makeRows(500),
@@ -180,7 +214,7 @@ stay put on the left, **Score** stays put on the right.
      actually needs to scroll horizontally for the pinned edges to mean anything. */
   new JHGrid({
     container: '#jhg-demo-frozen',
-    width: 620, height: 360, responsive: true,
+    width: 620, height: 360,
     showRowNumbers: true,
     rowSelection: 'multi',
     frozenCols: 2,
@@ -196,5 +230,74 @@ stay put on the left, **Score** stays put on the right.
       { field: 'active', label: 'Active', width: 100, type: 'checkbox' },
       { field: 'score',  label: 'Score',  width: 90, align: 'right' },
     ],
+  });
+
+  /* ── Row selection ──────────────────────────────────────────────────── */
+  const selectionStatus = document.getElementById('jhg-demo-selection-status');
+  new JHGrid({
+    container: '#jhg-demo-selection',
+    width: 520, height: 360,
+    showRowNumbers: true,
+    rowSelection: 'multi',
+    data: makeRows(60),
+    columnDefs: [
+      { field: 'name',  label: 'Name',  width: 150 },
+      { field: 'dept',  label: 'Dept',  width: 140 },
+      { field: 'grade', label: 'Grade', width: 90 },
+      { field: 'score', label: 'Score', width: 90, align: 'right' },
+    ],
+    onRowSelect: (rows) => {
+      selectionStatus.textContent = `${rows.length} selected`;
+    },
+  });
+
+  /* ── Column types & renderers ───────────────────────────────────────── */
+  new JHGrid({
+    container: '#jhg-demo-types',
+    width: 560, height: 360,
+    editableCols: '*',
+    showRowNumbers: true,
+    data: makeRows(40),
+    columnDefs: [
+      { field: 'dept',   label: 'Dept',   width: 150, type: 'dropdown', options: DEPTS },
+      { field: 'active', label: 'Active', width: 90,  type: 'checkbox' },
+      { field: 'joined', label: 'Joined', width: 130, type: 'date', format: 'YYYY-MM-DD' },
+      { field: 'salary', label: 'Salary', width: 140, align: 'right', renderer: CellRenderers.currency({ locale: 'en-US', currency: 'USD' }) },
+    ],
+  });
+
+  /* ── Themes ──────────────────────────────────────────────────────────── */
+  const DARK_THEME = {
+    headerBg: '#111827', headerText: '#e5e7eb', headerBorder: '#374151',
+    rowEven: '#1f2937', rowOdd: '#111827', cellText: '#f9fafb', cellBorder: '#374151',
+    selectionColor: '#60a5fa', selectionFill: 'rgba(96,165,250,0.18)',
+    selRowBg: 'rgba(96,165,250,0.14)', scrollbarBg: '#111827', scrollbarThumb: '#4b5563',
+    frozenBorder: '#4b5563',
+    hoverRowBg: 'rgba(255,255,255,0.055)',  // default wash is a black tint, invisible over dark rows
+  };
+
+  let themeGrid = null;
+  function buildThemeGrid(dark) {
+    themeGrid?.destroy();
+    themeGrid = new JHGrid({
+      container: '#jhg-demo-theme',
+      width: 560, height: 360,
+      editableCols: '*',   // otherwise every column gets the default readonlyCellBg (#F5F5F5) tint,
+                            // which the dark theme below doesn't override and would wash out on rowEven/rowOdd
+      showRowNumbers: true,
+      rowSelection: 'multi',
+      data: makeRows(30),
+      theme: dark ? DARK_THEME : undefined,
+      columnDefs: [
+        { field: 'name',   label: 'Name',   width: 150 },
+        { field: 'dept',   label: 'Dept',   width: 140 },
+        { field: 'grade',  label: 'Grade',  width: 90 },
+        { field: 'salary', label: 'Salary', width: 130, align: 'right', renderer: CellRenderers.currency({ locale: 'en-US', currency: 'USD' }) },
+      ],
+    });
+  }
+  buildThemeGrid(false);
+  document.getElementById('jhg-demo-theme-select').addEventListener('change', (e) => {
+    buildThemeGrid(e.target.value === 'dark');
   });
 </script>

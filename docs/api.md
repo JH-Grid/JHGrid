@@ -54,7 +54,7 @@ nav_order: 4
 | `fullScanConcurrency` | `number` | auto (`navigator.hardwareConcurrency` clamped to `[2, 8]`) | Worker-pool size for the full-dataset scan `rowReorder` (or a plugin's own full-table scan) runs via `fetchData` — see [Row Drag Reorder](#row-drag-reorder-rowreorder) |
 | `fullScanPageSize` | `number` | falls back to `chunkSize` | Page size used by that same full-dataset scan — see [Row Drag Reorder](#row-drag-reorder-rowreorder) |
 | `onRowReorder` | `Function` | `undefined` | Drag-reorder completion callback `(fromIndex, toIndex, rowData) => void` — see [Row Drag Reorder](#row-drag-reorder-rowreorder) |
-| `theme` | `object` | See [Theming](theming.md) | Partial theme override |
+| `theme` | `object` | See [Themes](theming.md) | Partial theme override |
 | `locale` | `string` | `'en-US'` | BCP-47 tag. Sets both the built-in UI text pack (e.g. `KO_I18N`) and the default locale for `CellRenderers.number/date/currency` — see [Localization](#locale--internationalization-locale--i18n) |
 | `i18n` | `object` | `undefined` | Per-key overrides layered on top of the text pack selected by `locale` — see [Localization](#locale--internationalization-locale--i18n) |
 | `ariaLabel` | `string` | `undefined` | `aria-label` of the grid container (defaults to `i18n.ariaGrid` if omitted) |
@@ -541,7 +541,7 @@ caught and logged rather than left to break the click handler.
 
 Setting `rowSelection: 'single' | 'multi'` lets you select rows by clicking the row-number cell
 (or `Ctrl`/`Shift` for multi-select). `onRowSelect(rows)` is called whenever the selection changes,
-and `getSelectedRows()` returns the currently selected row indices at any time.
+and `getSelectedRows()` returns the currently selected row indices at any time. → [Live example](demo.md#row-selection)
 
 ![Two rows selected via Ctrl+click on the row-number gutter](images/row-selection.png)
 
@@ -935,7 +935,8 @@ shape.
 ### Column Types: `date` / `richtext` / `image`, and Custom Editors/Renderers
 
 `columnDefs[i].type` supports `date`/`richtext`/`image` in addition to `checkbox`/`dropdown`/`button`.
-When set, the matching editor (`CellEditors`) and display renderer (`CellRenderers`) are applied automatically.
+When set, the matching editor (`CellEditors`) and display renderer (`CellRenderers`) are applied
+automatically. → [Live example](demo.md#column-types--renderers)
 
 ```js
 columnDefs: [

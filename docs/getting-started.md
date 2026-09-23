@@ -96,7 +96,7 @@ Pick by what you are trying to do:
 | Look up an option by name | [Constructor Options](api.md#constructor-options) |
 | Look up a method by name | [Public Methods](api.md#public-methods) - the index at the top links to wherever each one is written up |
 | Turn on a capability (paging, selection, filters, export, header groups …) | [Features](api.md#features) |
-| Change how it looks | [Theming](theming.md) |
+| Change how it looks | [Themes](theming.md) |
 | Know what a click, a drag or a key does | [Interaction Reference](interaction.md) |
 | Understand how it renders millions of rows | [Architecture](architecture.md) |
 | Check a browser version | [Browser Support](browser-support.md) |

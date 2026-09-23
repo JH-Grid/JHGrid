@@ -6,9 +6,9 @@ nav_exclude: true
 # JH Grid Documentation
 
 - [Getting Started](getting-started.md): what a grid needs, the three decisions to make up front, and where each is documented
-- [Live Demo](demo.md): 1,000,000-row scroll performance, editing, filtering, and frozen columns, running in your browser
+- [Live Demo](demo.md): 1,000,000-row scroll performance, editing, filtering, frozen columns, row selection, column types/renderers, and theming — all running in your browser
 - [API Reference](api.md): constructor options, data source interface, pagination, all public methods
-- [Theming](theming.md): theme object, CSS custom properties, canvas motion
+- [Themes](theming.md): theme object, CSS custom properties, canvas motion
 - [Interaction Reference](interaction.md): mouse and keyboard behavior
 - [Spring Boot Integration](integration.md): backend API shape, SQL pagination
 - [Architecture](architecture.md): internal structure, virtual rendering flow
