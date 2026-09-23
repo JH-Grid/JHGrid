@@ -6,8 +6,6 @@ Renders millions of rows and columns with near-zero DOM overhead.
 **[▶ Try the live demo](https://jh-grid.github.io/JHGrid/docs/demo)**: 1,000,000-row scroll
 performance, editing, filtering, and frozen columns, running in your browser right now.
 
-[![JH Grid live demo: 1,000,000 rows scrolling smoothly](docs/images/live-demo.png)](https://jh-grid.github.io/JHGrid/docs/demo)
-
 ![JH Grid screenshot](docs/images/jhgrid.png)
 
 ---
