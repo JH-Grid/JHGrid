@@ -1,10 +1,10 @@
-// 데모용 더미 데이터 — 렌더러/에디터/검증이 각각 의미 있게 보이도록 값 분포를 만든다.
+// Demo dummy data - value distribution shaped so renderers/editors/validation each show something meaningful.
 
 const DEPTS  = ['Engineering', 'Sales', 'Marketing', 'Support', 'Design'];
 const GRADES = ['A', 'B', 'C', 'D'];
 const SKILLS = ['JS', 'Python', 'SQL', 'Go', 'Rust'];
 
-// 1x1 투명 GIF를 색만 바꿔 쓰기엔 부족하니, 색 블록을 SVG data URI로 만든다(네트워크 불필요).
+// SVG data URI avatar (no network needed) instead of a 1x1 GIF, so each row gets a distinct color.
 function avatar(hue) {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48">
     <rect width="48" height="48" fill="hsl(${hue},65%,72%)"/>
@@ -20,7 +20,7 @@ export function makeRows(n = 1000000) {
     return {
       id:       String(i + 1),
       avatar:   avatar((i * 47) % 360),
-      name:     `사용자 ${i + 1}`,
+      name:     `User ${i + 1}`,
       email:    `user${i + 1}.longaddress@example-company-domain.com`,
       dept,
       skills:   [SKILLS[i % SKILLS.length], SKILLS[(i + 2) % SKILLS.length]].join(','),
@@ -31,7 +31,7 @@ export function makeRows(n = 1000000) {
       salary:   String(3200000 + ((i * 137) % 5000) * 1000),
       joined:   `20${20 + (i % 5)}-${String((i % 12) + 1).padStart(2, '0')}-${String((i % 27) + 1).padStart(2, '0')}`,
       score:    String((i * 37) % 101),
-      note:     i % 5 === 0 ? '<b>중요</b> 고객' : i % 5 === 1 ? '<i>검토</i> 필요' : '일반',
+      note:     i % 5 === 0 ? '<b>Important</b> customer' : i % 5 === 1 ? '<i>Review</i> needed' : 'Normal',
     };
   });
 }

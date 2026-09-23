@@ -1,6 +1,6 @@
 ---
 title: API Reference
-nav_order: 3
+nav_order: 4
 ---
 
 # API Reference
@@ -12,8 +12,8 @@ nav_order: 3
 | Option | Type | Default | Description |
 |---|---|---|---|
 | `container` | `string \| Element` | **required** | CSS selector or DOM element |
-| `fetchMeta` | `async (state?) => GridMeta` | one of these four required | Returns total row count and column list. Used together with `fetchData` |
-| `fetchData` | `async (page, size, state?) => GridData` | one of these four required | Returns a page of row data. Used together with `fetchMeta` |
+| `fetchMeta` | `async (state?) => GridMeta` | one of these four required | Returns total row count and column list. Used together with `fetchData` — see [fetchMeta](#fetchmeta) |
+| `fetchData` | `async (page, size, state?) => GridData` | one of these four required | Returns a page of row data. Used together with `fetchMeta` — see [fetchData](#fetchdata) |
 | `fetchPage` | `async (page, size, state?) => GridData & { totalRows, columns? }` | one of these four required | Single-callback alternative to `fetchMeta`+`fetchData` for a backend that returns both together: see [`fetchPage`](#fetchpage-single-callback-alternative) |
 | `data` | `object[]` | one of these four required | In-memory array, a convenience alternative to `fetchMeta`/`fetchData`/`fetchPage`, see [Local Array Data](#local-array-data-data) |
 | `width` | `number` | `1200` | Grid width in CSS pixels |
@@ -29,33 +29,37 @@ nav_order: 3
 | `scrollbarSize` | `number` | `12` | Scrollbar thickness in CSS pixels |
 | `chunkSize` | `number` | `300` | Rows fetched per API request |
 | `maxCachedChunks` | `number` | `50` | Maximum number of chunks kept in memory (LRU) |
-| `pagination` | `{ enabled, pageSize? }` | `undefined` | When set, switches from continuous virtual scrolling to classic paging (fixed-size pages + a pager bar at the bottom). `pageSize` defaults to `50` when omitted, and takes priority over `chunkSize` when set |
-| `onPageChange` | `Function` | `undefined` | Page-change callback `(page, pageCount) => void`, fired only when the page actually changes |
+| `pagination` | `{ enabled, pageSize? }` | `undefined` | When set, switches from continuous virtual scrolling to classic paging (fixed-size pages + a pager bar at the bottom). `pageSize` defaults to `50` when omitted, and takes priority over `chunkSize` when set — see [Pagination](#pagination) |
+| `onPageChange` | `Function` | `undefined` | Page-change callback `(page, pageCount) => void`, fired only when the page actually changes — see [Pagination](#pagination) |
 | `frozenCols` | `number` | `0` | Number of columns frozen from the left. Frozen columns always stay visible during horizontal scroll |
 | `frozenColsRight` | `number` | `0` | Number of columns frozen from the right |
 | `editableCols` | `string[] \| '*'` | `[]` | List of editable columns. All columns are readonly if omitted; `'*'` makes all columns editable |
-| `deleteMode` | `'mark' \| 'permanent'` | `'mark'` | What `deleteRow()` does to a **server** row when the call doesn't say: `'mark'` dims it with a strikethrough and keeps it on screen (reported by `getDeletedRows()`); `'permanent'` removes it from the screen immediately (reported by `getRemovedRows()`). Either way the server itself is untouched; the grid only records the choice. `deleteRow(i, { permanent })` overrides this per call |
+| `deleteMode` | `'mark' \| 'permanent'` | `'mark'` | What `deleteRow()` does to a **server** row when the call doesn't say: `'mark'` dims it with a strikethrough and keeps it on screen (reported by `getDeletedRows()`); `'permanent'` removes it from the screen immediately (reported by `getRemovedRows()`). Either way the server itself is untouched; the grid only records the choice. `deleteRow(i, { permanent })` overrides this per call — see [Adding/Deleting Rows](#addingdeleting-rows-addrow--deleterow) |
 | `rowContextMenuItems` | `false \| string[]` | `undefined` (all shown) | Narrows which items appear in the row-number gutter's right-click menu. `false` disables it entirely; an array keeps only the named keys: `'row-insert-above'`, `'row-insert-below'`, `'row-insert-top'`, `'row-insert-bottom'`, `'row-delete'` (the last one covers mark/permanent/undelete together, since which renders is row state, not a host choice) |
 | `colContextMenuItems` | `false \| string[]` | `undefined` (all shown) | Narrows which items appear in the column header's right-click menu. Same shape as `rowContextMenuItems`. Valid keys: `'freeze'`, `'freeze-right'`, `'visibility'`, `'insert-left'`, `'insert-right'`, `'delete'` |
 | `cellContextMenuItems` | `false \| string[]` | `undefined` (all shown) | Narrows which items appear in the plain-cell right-click menu. Valid keys: `'col-insert-left'`, `'col-insert-right'`, `'col-delete'`, `'row-insert-below'`, `'row-delete'` |
 | `cellContextMenuExtraItems` | `(ctx) => {label, onClick, disabled?}[] \| null` | `undefined` | Adds custom items to the plain-cell right-click menu, after whichever built-ins `cellContextMenuItems` left in place. Called fresh every time the menu opens for a cell; `ctx` carries `row`/`col`/`field`/`rowData`/`clientX`/`clientY` |
-| `columnDefs` | `ColumnDef[]` | `undefined` | Per-column definitions (type, editor, validation, etc.; see the sections below) |
-| `headerRows` | `HeaderRowDef[][]` | `undefined` | Explicitly defines multi-level header groups. Takes priority over auto-generation from `columnDefs[].group` when set |
+| `columnDefs` | `ColumnDef[]` | `undefined` | Per-column definitions: type, editor, validation and the rest — see [Column Definition](#column-definition-reference) |
+| `headerRows` | `HeaderRowDef[][]` | `undefined` | Explicitly defines multi-level header groups. Takes priority over auto-generation from `columnDefs[].group` when set — see [Multi-Level Header Groups](#multi-level-header-groups-columndefsgroup) |
+| `columnLetterHeader` | `boolean` | `false` | Adds an Excel-style A/B/C/... row above the normal header row(s), one non-interactive cell per column (no sort/filter/checkbox) |
 | `showRowNumbers` | `boolean` | `true` | Shows a row-number column on the left. Required for `rowReorder` |
 | `rowNumberWidth` | `number` | `50` | Width of the row-number column, in pixels |
-| `hiddenColumns` | `string[]` | `undefined` | Fields to hide on initial render |
+| `hiddenColumns` | `string[]` | `undefined` | Fields to hide on initial render — see [Hiding Columns](#addingdeletinghiding-columns-addcolumn--deletecolumn--hidecolumn) |
 | `responsive` | `boolean` | `false` | Auto-resizes on container size changes via `ResizeObserver` (ignored in unsupported browsers) |
-| `onCellChange` | `Function` | `undefined` | Cell value change callback `({ row, field, newValue, oldValue }) => void` |
-| `rowSelection` | `'none' \| 'single' \| 'multi'` | `'none'` | Row selection mode. Rows are selected by click (plus `Ctrl`/`Shift` for multi-select) |
-| `onRowSelect` | `Function` | `undefined` | Callback fired whenever the selected row index array changes `(rows: number[]) => void` |
-| `rowReorder` | `boolean` | `false` | Enables dragging rows by the row-number gutter to reorder them. Scans the entire dataset once when enabled |
-| `onRowReorder` | `Function` | `undefined` | Drag-reorder completion callback `(fromIndex, toIndex, rowData) => void` |
+| `onCellChange` | `Function` | `undefined` | Cell value change callback `({ row, field, newValue, oldValue }) => void` — see [getEdits()](#getedits) |
+| `onCellDoubleClick` | `Function` | `undefined` | Fired on every cell double-click, editable or not, alongside (not instead of) the built-in edit-start `(rowIndex, rowData, field) => void` |
+| `rowSelection` | `'none' \| 'single' \| 'multi'` | `'none'` | Row selection mode. Rows are selected by click (plus `Ctrl`/`Shift` for multi-select) — see [Row Selection](#row-selection-rowselection--header-checkbox) |
+| `onRowSelect` | `Function` | `undefined` | Callback fired whenever the selected row index array changes `(rows: number[]) => void` — see [Row Selection](#row-selection-rowselection--header-checkbox) |
+| `rowReorder` | `boolean` | `false` | Enables dragging rows by the row-number gutter to reorder them. Scans the entire dataset once when enabled — see [Row Drag Reorder](#row-drag-reorder-rowreorder) |
+| `fullScanConcurrency` | `number` | auto (`navigator.hardwareConcurrency` clamped to `[2, 8]`) | Worker-pool size for the full-dataset scan `rowReorder` (or a plugin's own full-table scan) runs via `fetchData` — see [Row Drag Reorder](#row-drag-reorder-rowreorder) |
+| `fullScanPageSize` | `number` | falls back to `chunkSize` | Page size used by that same full-dataset scan — see [Row Drag Reorder](#row-drag-reorder-rowreorder) |
+| `onRowReorder` | `Function` | `undefined` | Drag-reorder completion callback `(fromIndex, toIndex, rowData) => void` — see [Row Drag Reorder](#row-drag-reorder-rowreorder) |
 | `theme` | `object` | See [Theming](theming.md) | Partial theme override |
-| `locale` | `string` | `'en-US'` | BCP-47 tag. Sets both the built-in UI text pack (e.g. `KO_I18N`) and the default locale for `CellRenderers.number/date/currency` |
-| `i18n` | `object` | `undefined` | Per-key overrides layered on top of the text pack selected by `locale` |
+| `locale` | `string` | `'en-US'` | BCP-47 tag. Sets both the built-in UI text pack (e.g. `KO_I18N`) and the default locale for `CellRenderers.number/date/currency` — see [Localization](#locale--internationalization-locale--i18n) |
+| `i18n` | `object` | `undefined` | Per-key overrides layered on top of the text pack selected by `locale` — see [Localization](#locale--internationalization-locale--i18n) |
 | `ariaLabel` | `string` | `undefined` | `aria-label` of the grid container (defaults to `i18n.ariaGrid` if omitted) |
-| `rowHighlighter` | `(rowData, rowIndex) => string \| null` | `undefined` | Callback that conditionally sets a row's background color. Called on every render |
-| `cellBackground` | `(rowData, rowIndex, field, colIndex) => string \| null` | `undefined` | Callback that conditionally sets a cell's background color. Painted above `rowHighlighter` and below cell content |
+| `rowHighlighter` | `(rowData, rowIndex) => string \| null` | `undefined` | Callback that conditionally sets a row's background color. Called on every render — see [Conditional Styling](#conditional-styling-rowhighlighter--cellbackground) |
+| `cellBackground` | `(rowData, rowIndex, field, colIndex) => string \| null` | `undefined` | Callback that conditionally sets a cell's background color. Painted above `rowHighlighter` and below cell content — see [Conditional Styling](#conditional-styling-rowhighlighter--cellbackground) |
 | `cellDecorator` | `(ctx, args) => void` | `undefined` | Draws directly on the canvas on top of a cell's content, for a small corner mark, icon, or badge. Called for every visible, loaded cell on every render (`ctx` is the `CanvasRenderingContext2D`; `args` adds `field` to the usual `x`/`y`/`w`/`h`/`rowIndex`/`colIndex` renderer args). Exceptions are caught and logged, and don't interrupt rendering |
 | `cellTooltip` | `(rowData, rowIndex, field, colIndex) => string \| null` | `undefined` | Custom tooltip text shown immediately (no hover delay) while the pointer idles over a cell. Takes priority over the built-in overflow-text tooltip, but a validation error on the cell still wins over this |
 | `onSelectionChange` | `Function` | `undefined` | Cell/range selection change callback (`null` = selection cleared) |
@@ -63,11 +67,14 @@ nav_order: 3
 | `onFilter` | `Function` | `undefined` | Filter applied/cleared callback `(filters) => void` |
 | `onColumnReorder` | `Function` | `undefined` | Column drag-reorder completion callback `(columns: string[]) => void` |
 | `onColumnResize` | `Function` | `undefined` | Column width resize (mouse-up) callback `(field, width) => void` |
+| `onColumnVisibilityChange` | `Function` | `undefined` | Fired after `hideColumn()`/`showColumn()` or the column chooser's Apply actually changes the hidden-column set `(hiddenColumns: string[]) => void` |
 | `onRowHeightResize` | `Function` | `undefined` | Per-row height drag-resize completion callback from the row-number gutter `(rowIndex, height) => void` |
 | `onRender` | `Function` | `undefined` | Callback fired after every render |
 | `onChunkError` | `Function` | `undefined` | Data chunk load failure callback `(err: Error) => void` |
-| `onValidationError` | `Function` | `undefined` | Cell validity change callback `(row, field, message: string \| null) => void` |
-| `onHeaderCheckboxChange` | `Function` | `undefined` | Header checkbox click callback `(field, checked) => void` |
+| `onValidationError` | `Function` | `undefined` | Cell validity change callback `(row, field, message: string \| null) => void` — see [Validation](#isvalid--getinvalidcells--validateall) |
+| `onHeaderCheckboxChange` | `Function` | `undefined` | Header checkbox click callback `(field, checked) => void` — see [Header Checkbox](#row-selection-rowselection--header-checkbox) |
+| `fetchFilterValues` | `async (field, query, state) => string[] | {values, partial?}` | `undefined` | Supplies the value suggestions for a column's tag filter. Without it the filter panel can only offer values found in the rows currently loaded: see [Tag Filter](#tag-filter-fetchfiltervalues) |
+| `filterValueMinChars` | `number` | `2` | How many characters the tag filter waits for before calling `fetchFilterValues`. One character against a large column is the most expensive question it can ask and the least useful answer it can get — see [Tag Filter](#tag-filter-fetchfiltervalues) |
 
 ---
 
@@ -181,37 +188,6 @@ Ignored if `fetchMeta`/`fetchData` is also provided.
 
 ---
 
-## Pagination
-
-The default is continuous virtual scrolling, but setting the `pagination` option switches to a
-classic page-based UI. Each page shows exactly `pageSize` rows, and scrolling only happens within
-that page; moving to the next/previous page only happens via the auto-rendered pager bar at the
-bottom (`«`, `‹`, page numbers, `›`, `»`) or via `goToPage()`/`nextPage()`/`prevPage()`.
-
-![Pager bar below a paginated grid](images/pagination.png)
-
-```js
-const grid = new JHGrid({
-  container: '#grid',
-  fetchMeta, fetchData,
-  pagination: { enabled: true, pageSize: 50 },
-  onPageChange: (page, pageCount) => console.log(`${page + 1} / ${pageCount}`),
-});
-
-grid.nextPage();
-grid.goToPage(3);
-grid.getCurrentPage(); // 0-based
-grid.getPageCount();
-```
-
-Every public API that deals with row indices (`getEdits()`, `onCellChange`, etc.) always uses
-**absolute indices relative to the entire dataset**, regardless of pagination. Pagination only
-limits what's scrolled/visible at once, it never changes how rows are addressed.
-
-`pageSize` is fixed at construction time and cannot be changed at runtime.
-
----
-
 ## Column Definition Reference
 
 Every entry in `columnDefs` is one `ColumnDef`. Most fields are covered by their own section
@@ -232,19 +208,91 @@ complete field list in one place.
 | `group` | `string \| string[]` | Group-header path (outermost → innermost). See [Multi-Level Header Groups](#multi-level-header-groups-columndefsgroup) |
 | `type` | `'text' \| 'dropdown' \| 'multiselect' \| 'checkbox' \| 'button' \| 'date' \| 'image'` | Selects the built-in editor + renderer pair. Defaults to `'text'` |
 | `renderer` | `string \| (ctx, args) => void` | A `CellRenderers` key, or a custom draw function. Overrides the renderer `type` would otherwise select |
-| `editor` | `string \| (ctx) => {value, remove}` | A `CellEditors` key, or a custom editor factory. Overrides the editor `type` would otherwise select |
+| `editor` | `string \| (ctx) => {value, remove}` | A `CellEditors` key, or a custom editor factory. Overrides the editor `type` would otherwise select. `ctx` carries the anchored-DOM surfaces a custom editor mounts its UI with - see [Editor surfaces](#editor-surfaces-ctxcellbox--ctxpopup--ctxdone) |
 | `editorOptions` | `object` | Options forwarded to the named `CellEditors` factory when `editor` is a string key |
 | `format` | `string` | Date format for `type: 'date'` columns (e.g. `'YYYY-MM-DD'`). Applied to both rendering and clipboard copy |
 | `options` | `DropdownOption[] \| (rowData) => DropdownOption[]` | Option list for `type: 'dropdown'`/`'multiselect'`: a string array, `{value,label}` array, or a function computing options per row |
 | `editable` | `boolean` | Per-column override of `opts.editableCols`. Only meaningful to make a column *excluded* by `editableCols` editable anyway, or vice versa |
 | `validation` | `ColumnValidation` | Declarative required/pattern/min/max/length/custom rules: see [validation](#isvalid--getinvalidcells--validateall) |
 | `button` | `ButtonColumnDef` | Button config for `type: 'button'`: see [Button Columns](#button-columns-type-button) |
+| `cellButton` | `{ width?, icon?, style?, onClick }` | A small click hotspot pinned to the cell's right edge, whatever the column's `type`: see [Cell Buttons](#cell-buttons-columndefscellbutton) |
 | `headerCheckbox` | `boolean` | Draws a select-all checkbox in this column's header: see [Row Selection](#row-selection-rowselection--header-checkbox) |
-| `aggregate` | `'sum' \| 'avg' \| 'count' \| 'min' \| 'max' \| {fn, format?}` | Aggregate function shown in a group-header row/footer. Built-in types cast with `Number(row[field])` and ignore `NaN` (`'count'` counts non-null values instead); a custom `fn(rows, field)` computes the value itself, and `format(value)` controls the display string. **Only meaningful with a row-grouping plugin installed**: without one the value is retained but never drawn anywhere |
 
 ---
 
 ## Public Methods
+
+Every public method, and where it is documented. Methods whose behaviour is a feature in its own
+right are written up under [Features](#features) rather than repeated here.
+
+| Method | Documented under |
+|---|---|
+| `acknowledgeInsert()` | [Incremental Save (`getOriginalRowData` / `isNewRow` / `acknowledgeSave` / `acknowledgeInsert`)](#incremental-save-getoriginalrowdata--isnewrow--acknowledgesave--acknowledgeinsert) |
+| `acknowledgeSave()` | [Incremental Save (`getOriginalRowData` / `isNewRow` / `acknowledgeSave` / `acknowledgeInsert`)](#incremental-save-getoriginalrowdata--isnewrow--acknowledgesave--acknowledgeinsert) |
+| `addColumn()` | [Adding/Deleting/Hiding Columns (`addColumn` / `deleteColumn` / `hideColumn`)](#addingdeletinghiding-columns-addcolumn--deletecolumn--hidecolumn) |
+| `addRow()` | [Adding/Deleting Rows (`addRow` / `deleteRow`)](#addingdeleting-rows-addrow--deleterow) |
+| `autoFitColumns()` | [Row Height (`setRowHeight` / `autoFitColumns`)](#row-height-setrowheight--autofitcolumns) |
+| `canRedo()` | [`undo()` / `redo()`](#undo--redo) |
+| `canUndo()` | [`undo()` / `redo()`](#undo--redo) |
+| `clearEdits()` | [`clearEdits()`](#clearedits) |
+| `clearFilters()` | [`undo()` / `redo()`](#undo--redo) |
+| `clearQuickFilter()` | [Tag Filter (`fetchFilterValues`)](#tag-filter-fetchfiltervalues) |
+| `clearRowSelection()` | [Row Selection (`rowSelection`) / Header Checkbox](#row-selection-rowselection--header-checkbox) |
+| `clearSort()` | [Field-Based Filter / Sort (`setFilter` / `setSort`)](#field-based-filter--sort-setfilter--setsort) |
+| `commitColumns()` | [Adding/Deleting/Hiding Columns (`addColumn` / `deleteColumn` / `hideColumn`)](#addingdeletinghiding-columns-addcolumn--deletecolumn--hidecolumn) |
+| `deleteColumn()` | [Adding/Deleting/Hiding Columns (`addColumn` / `deleteColumn` / `hideColumn`)](#addingdeletinghiding-columns-addcolumn--deletecolumn--hidecolumn) |
+| `deleteRow()` | [Adding/Deleting Rows (`addRow` / `deleteRow`)](#addingdeleting-rows-addrow--deleterow) |
+| `destroy()` | [`destroy()`](#destroy) |
+| `exportCsv()` | [Data Export (`exportCsv` / `printGrid`)](#data-export-exportcsv--printgrid) |
+| `getCurrentPage()` | [`getCurrentPage()` / `getPageCount()`](#getcurrentpage--getpagecount) |
+| `getDeletedColumns()` | [Adding/Deleting/Hiding Columns (`addColumn` / `deleteColumn` / `hideColumn`)](#addingdeletinghiding-columns-addcolumn--deletecolumn--hidecolumn) |
+| `getDeletedRows()` | [Adding/Deleting Rows (`addRow` / `deleteRow`)](#addingdeleting-rows-addrow--deleterow) |
+| `getEdits()` | [`getEdits()`](#getedits) |
+| `getHeaderCheckbox()` | [Row Selection (`rowSelection`) / Header Checkbox](#row-selection-rowselection--header-checkbox) |
+| `getHiddenColumns()` | [Adding/Deleting/Hiding Columns (`addColumn` / `deleteColumn` / `hideColumn`)](#addingdeletinghiding-columns-addcolumn--deletecolumn--hidecolumn) |
+| `getInvalidCells()` | [`isValid()` / `getInvalidCells()` / `validateAll()`](#isvalid--getinvalidcells--validateall) |
+| `getNewColumns()` | [Adding/Deleting/Hiding Columns (`addColumn` / `deleteColumn` / `hideColumn`)](#addingdeletinghiding-columns-addcolumn--deletecolumn--hidecolumn) |
+| `getNewRows()` | [Adding/Deleting Rows (`addRow` / `deleteRow`)](#addingdeleting-rows-addrow--deleterow) |
+| `getOriginalRowData()` | [Incremental Save (`getOriginalRowData` / `isNewRow` / `acknowledgeSave` / `acknowledgeInsert`)](#incremental-save-getoriginalrowdata--isnewrow--acknowledgesave--acknowledgeinsert) |
+| `getPageCount()` | [`getCurrentPage()` / `getPageCount()`](#getcurrentpage--getpagecount) |
+| `getQuickFilter()` | [Tag Filter (`fetchFilterValues`)](#tag-filter-fetchfiltervalues) |
+| `getRemovedRows()` | [Adding/Deleting Rows (`addRow` / `deleteRow`)](#addingdeleting-rows-addrow--deleterow) |
+| `getRowData()` | [`getRowData(rowIndex)` / `ready()`](#getrowdatarowindex--ready) |
+| `getRowHeight()` | [Row Height (`setRowHeight` / `autoFitColumns`)](#row-height-setrowheight--autofitcolumns) |
+| `getSelectedRows()` | [Row Selection (`rowSelection`) / Header Checkbox](#row-selection-rowselection--header-checkbox) |
+| `getState()` | [State Snapshot/Restore (`getState` / `setState`)](#state-snapshotrestore-getstate--setstate) |
+| `goToPage()` | [`goToPage(page)` / `nextPage()` / `prevPage()`](#gotopagepage--nextpage--prevpage) |
+| `hideColumn()` | [Adding/Deleting/Hiding Columns (`addColumn` / `deleteColumn` / `hideColumn`)](#addingdeletinghiding-columns-addcolumn--deletecolumn--hidecolumn) |
+| `isColumnVisible()` | [Adding/Deleting/Hiding Columns (`addColumn` / `deleteColumn` / `hideColumn`)](#addingdeletinghiding-columns-addcolumn--deletecolumn--hidecolumn) |
+| `isNewRow()` | [Incremental Save (`getOriginalRowData` / `isNewRow` / `acknowledgeSave` / `acknowledgeInsert`)](#incremental-save-getoriginalrowdata--isnewrow--acknowledgesave--acknowledgeinsert) |
+| `isValid()` | [`isValid()` / `getInvalidCells()` / `validateAll()`](#isvalid--getinvalidcells--validateall) |
+| `nextPage()` | [`goToPage(page)` / `nextPage()` / `prevPage()`](#gotopagepage--nextpage--prevpage) |
+| `prevPage()` | [`goToPage(page)` / `nextPage()` / `prevPage()`](#gotopagepage--nextpage--prevpage) |
+| `printGrid()` | [Data Export (`exportCsv` / `printGrid`)](#data-export-exportcsv--printgrid) |
+| `ready()` | [`getRowData(rowIndex)` / `ready()`](#getrowdatarowindex--ready) |
+| `redo()` | [`undo()` / `redo()`](#undo--redo) |
+| `refresh()` | [`refresh()`](#refresh) |
+| `removeFilter()` | [Field-Based Filter / Sort (`setFilter` / `setSort`)](#field-based-filter--sort-setfilter--setsort) |
+| `removeSort()` | [Field-Based Filter / Sort (`setFilter` / `setSort`)](#field-based-filter--sort-setfilter--setsort) |
+| `repaint()` | [`repaint()`](#repaint) |
+| `resetRowHeight()` | [Row Height (`setRowHeight` / `autoFitColumns`)](#row-height-setrowheight--autofitcolumns) |
+| `scrollTo()` | [`scrollTo(rowIndex)`](#scrolltorowindex) |
+| `setCellValue()` | [`setCellValue(row, field, value)`](#setcellvaluerow-field-value) |
+| `setCellValues()` | [`setCellValues(entries)`](#setcellvaluesentries) |
+| `setFilter()` | [Field-Based Filter / Sort (`setFilter` / `setSort`)](#field-based-filter--sort-setfilter--setsort) |
+| `setFilterValues()` | [Set Filter / Quick Filter](#set-filter--quick-filter) |
+| `setHeaderCheckbox()` | [Row Selection (`rowSelection`) / Header Checkbox](#row-selection-rowselection--header-checkbox) |
+| `setQuickFilter()` | [Tag Filter (`fetchFilterValues`)](#tag-filter-fetchfiltervalues) |
+| `setRowHeight()` | [Row Height (`setRowHeight` / `autoFitColumns`)](#row-height-setrowheight--autofitcolumns) |
+| `setSort()` | [Field-Based Filter / Sort (`setFilter` / `setSort`)](#field-based-filter--sort-setfilter--setsort) |
+| `setState()` | [State Snapshot/Restore (`getState` / `setState`)](#state-snapshotrestore-getstate--setstate) |
+| `showColumn()` | [Adding/Deleting/Hiding Columns (`addColumn` / `deleteColumn` / `hideColumn`)](#addingdeletinghiding-columns-addcolumn--deletecolumn--hidecolumn) |
+| `undeleteColumn()` | [Adding/Deleting/Hiding Columns (`addColumn` / `deleteColumn` / `hideColumn`)](#addingdeletinghiding-columns-addcolumn--deletecolumn--hidecolumn) |
+| `undeleteRow()` | [Adding/Deleting Rows (`addRow` / `deleteRow`)](#addingdeleting-rows-addrow--deleterow) |
+| `undo()` | [`undo()` / `redo()`](#undo--redo) |
+| `validateAll()` | [`isValid()` / `getInvalidCells()` / `validateAll()`](#isvalid--getinvalidcells--validateall) |
+
+---
 
 ### `refresh()`
 Resets scroll position, clears edits, and reloads data.
@@ -373,6 +421,55 @@ saveBtn.addEventListener('click', async () => {
 
 ![Validation error: red-bordered cell with an error tooltip](images/validation-error.png)
 
+### `getRowData(rowIndex)` / `ready()`
+
+```js
+grid.getRowData(3);  // row 3's current data (with unsaved edits applied; null if not loaded)
+await grid.ready();  // waits until the initial metadata/first chunk load completes
+```
+
+### `destroy()`
+Fully removes event listeners and DOM. Call this when unmounting a component or navigating away.
+
+```js
+grid.destroy();
+```
+---
+
+## Features
+
+Each of these is a capability of the grid rather than a single call - the options that switch it
+on, the methods that drive it, and what it does. The [Constructor Options](#constructor-options)
+table links here, and so does the method index above.
+### Pagination
+
+The default is continuous virtual scrolling, but setting the `pagination` option switches to a
+classic page-based UI. Each page shows exactly `pageSize` rows, and scrolling only happens within
+that page; moving to the next/previous page only happens via the auto-rendered pager bar at the
+bottom (`«`, `‹`, page numbers, `›`, `»`) or via `goToPage()`/`nextPage()`/`prevPage()`.
+
+![Pager bar below a paginated grid](images/pagination.png)
+
+```js
+const grid = new JHGrid({
+  container: '#grid',
+  fetchMeta, fetchData,
+  pagination: { enabled: true, pageSize: 50 },
+  onPageChange: (page, pageCount) => console.log(`${page + 1} / ${pageCount}`),
+});
+
+grid.nextPage();
+grid.goToPage(3);
+grid.getCurrentPage(); // 0-based
+grid.getPageCount();
+```
+
+Every public API that deals with row indices (`getEdits()`, `onCellChange`, etc.) always uses
+**absolute indices relative to the entire dataset**, regardless of pagination. Pagination only
+limits what's scrolled/visible at once, it never changes how rows are addressed.
+
+`pageSize` is fixed at construction time and cannot be changed at runtime.
+
 ### Button Columns (`type: 'button'`)
 
 ![Button column rendering Activate/Deactivate pills, colored by the row's active state](images/button-columns.png)
@@ -409,6 +506,36 @@ const grid = new JHGrid({
   ],
 });
 ```
+
+### Cell Buttons (`columnDefs[].cellButton`)
+
+A small always-there click hotspot pinned to a cell's right edge, whatever the column's `type` -
+unlike `type: 'button'`, which turns the *whole* cell into a button. The rest of the cell keeps
+behaving normally: it still renders its value, still selects, still edits.
+
+```js
+{
+  field: 'gas2', label: 'Gas 2', width: 100,
+  cellButton: { icon: '+', onClick: (rowIndex, rowData, field) => openGasPicker(rowIndex) },
+}
+```
+
+Giving it an `icon` is what makes the grid draw it — a shaded band with the glyph centred in it, the
+same shape `CellRenderers.dropdown()` gives its arrow, so a button column sits with the grid's other
+affordances instead of looking like a one-off. The width it draws is the width it hit-tests, so the
+visible band and the clickable band cannot drift apart.
+
+| Option | Default | Meaning |
+|---|---|---|
+| `onClick` | *(required)* | `(rowIndex, rowData, field) => void`. Fires regardless of `editableCols` — it is an action, not an edit, and takes no part in undo/redo |
+| `icon` | – | The glyph to draw. Omit it and nothing is drawn while the hotspot stays clickable, for a host that would rather draw its own mark through `cellDecorator` |
+| `width` | `20` | Hotspot width in px, measured in from the cell's right edge |
+| `style` | – | `'plain'` drops the shaded band and draws the glyph alone |
+| `iconSize` / `iconColor` | `13` / header text colour | Glyph font size and fill |
+
+A click inside the hotspot fires `onClick` and does not start an edit on the cell behind it; the
+cursor turns to a pointer there and nowhere else in the cell. An exception thrown by `onClick` is
+caught and logged rather than left to break the click handler.
 
 ### Row Selection (`rowSelection`) / Header Checkbox
 
@@ -621,7 +748,6 @@ taken with an older version of the grid still applies as far as it goes.
 | `localColumns` | `ColumnDef[]` | Columns added via `addColumn()` not yet committed (see `getNewColumns()`/`commitColumns()`) |
 | `deletedColumns` | `string[]` | Server columns marked deleted via `deleteColumn()`, not yet committed (see `getDeletedColumns()`) |
 | `rowChanges` | `object` | Unsaved row work: see below |
-| `grouping` / `treeData` / `colorFilters` | varies | Always present (as `null` when unused) even without the plugin that gives them meaning; a plain `getState()`/`setState()` round-trip preserves them regardless. Only a row-grouping/tree-data/color-filter plugin actually reads or writes them |
 
 `rowChanges` is the row counterpart of `localColumns`/`deletedColumns`, keyed by **server index**
 throughout (never screen position, since a snapshot is meant to outlive whatever arrangement
@@ -637,13 +763,6 @@ produced it):
 `setState()` treats `rowChanges` as a full replacement, not an addition; restoring the same
 snapshot twice doesn't duplicate rows. Restoring against changed server data names different
 records by index, the same caveat that applies to `filters` naming fields that may no longer exist.
-
-### `getRowData(rowIndex)` / `ready()`
-
-```js
-grid.getRowData(3);  // row 3's current data (with unsaved edits applied; null if not loaded)
-await grid.ready();  // waits until the initial metadata/first chunk load completes
-```
 
 ### Incremental Save (`getOriginalRowData` / `isNewRow` / `acknowledgeSave` / `acknowledgeInsert`)
 
@@ -728,7 +847,7 @@ Chinese are bundled) and the default locale for the number/date/currency cell re
 `i18n` to override specific strings on top of that.
 
 ```js
-import { JHGrid, KO_I18N } from '../dist/jhgrid.esm.js';
+import { JHGrid, KO_I18N } from '@jh-grid/jhgrid-js';
 
 const grid = new JHGrid({
   container: '#grid',
@@ -777,7 +896,7 @@ Assign any of these to `columnDefs[i].renderer` (either the string key or a call
 directly; both are equivalent, but calling it yourself lets you pass options):
 
 ```js
-import { CellRenderers } from '../dist/jhgrid.esm.js';
+import { CellRenderers } from '@jh-grid/jhgrid-js';
 
 columnDefs: [
   { field: 'progress', renderer: CellRenderers.progressBar({ max: 100, showLabel: true }) },
@@ -794,6 +913,7 @@ columnDefs: [
 | `number({ locale?, decimals? })` | BCP-47 `locale`, fixed `decimals` | `Intl.NumberFormat`-based number formatting |
 | `date({ format?, locale?, dateStyle?, align? })` | `format`: a `YYYY`/`MM`/`DD`/`HH`/`mm`/`ss` pattern, or `'locale'` to format via `Intl.DateTimeFormat` | Date formatting: pattern-based by default, locale-aware when `format: 'locale'` |
 | `currency({ locale?, currency? })` | BCP-47 `locale`, ISO 4217 `currency` code | `Intl.NumberFormat`-based currency formatting |
+| `link({ color?, mutedColor?, underline?, align?, linked? })` | `linked`: `true` or `(rowData) => boolean`; `color` (default `#2563eb`), `mutedColor`, `underline`, `align` | Draws the cell as a link - coloured, underlined, ellipsized to fit. `linked` decides per row whether it looks (and so, paired with `onCellDoubleClick`, behaves) as one |
 | `dropdown({ placeholder? })` | placeholder text for an empty value | Current value + a `▾` arrow, matching the dropdown editor's affordance |
 | `multiselect({ placeholder? })` | placeholder text for an empty selection | Selected values joined + a `▾` arrow |
 | `checkbox({ checkedColor?, size? })` | box color and size (px) | A checked/unchecked box glyph |
@@ -852,8 +972,7 @@ accepts a function:
     const input = document.createElement('input');
     input.type = 'color';
     input.value = ctx.initialValue || '#000000';
-    Object.assign(input.style, { position: 'absolute', left: ctx.x + 'px', top: ctx.y + 'px' });
-    ctx.wrapper.appendChild(input);
+    ctx.cellBox({ el: input });   // positions it over the cell for you
     input.addEventListener('change', () => ctx.commit());
     return input; // any shape works as long as it has .value / .remove()
   } }
@@ -865,10 +984,78 @@ accepts a function:
 so you can either return an `<input>` directly (as above) or return an object shaped like
 `CellEditors.dropdown()`'s `{ get value() {...}, remove() {...} }`.
 
+#### Editor surfaces: `ctx.cellBox()` / `ctx.popup()` / `ctx.done()`
+
+The example above positions its `<input>` by hand, which is fine for a control that covers exactly
+the cell. Anything larger - an option panel, a picker, a form - has to sit outside the cell, escape
+whatever `overflow: hidden` is between the grid and the page, stay put while the page scrolls, and
+close on the same keys and outside clicks as every other editor. `ctx` provides all of that, so a
+custom editor never computes a coordinate:
+
+```js
+{ field: 'certify', editor: (ctx) => {
+    ctx.cellBox();                                        // accent border over the cell
+    const panel = ctx.popup({ role: 'listbox', minWidth: 260 });   // anchored under the cell
+    // ...build your UI into `panel`...
+    return ctx.done({ value: () => serialize() });        // { value, remove } + keys + outside click
+  } }
+```
+
+**`ctx.cellBox({ el, border = true, interactive })`** → a box covering exactly the cell, carrying
+the same accent border the built-in editors draw. It lives inside the grid wrapper, so it tracks the
+grid on its own, and it is removed with the editor.
+
+Pass `el` to place an element you already have — a native `<input type="color">`, say — instead of
+letting it make a `<div>`; that is what an editor whose control *is* its element wants, and it is how
+the example above positions its input. Either way the element fills the cell, as the built-in
+editors' inputs do (clear its `width`/`height` afterwards if you want its natural size).
+
+`interactive` decides whether the box receives clicks. It defaults to `false` for a `<div>` cellBox
+makes itself (its usual job is to mark the cell, not to catch anything) and to `true` when you pass
+`el`, since an element handed in is there to be typed in or clicked.
+
+**`ctx.popup(opts)`** → an empty `<div>` anchored to the cell, mounted on `<body>` with
+`position: fixed` so no ancestor can clip it, and re-anchored as ancestors scroll or the window
+resizes. Options:
+
+| Option | Default | Meaning |
+|---|---|---|
+| `placement` | `'below'` | `'below'` / `'above'` / `'over'` the cell |
+| `align` | `'left'` | which cell edge it lines up with: `'left'` / `'right'` / `'stretch'` (cell width) |
+| `minWidth` | `'cell'` | `'cell'`, a number of px, or `null` |
+| `maxHeight` | `240` | px, or `null` for unbounded. Scrolls past it |
+| `flip` | `true` | flip to the other side of the cell when the chosen one has no room, and clamp horizontally into the viewport |
+| `chrome` | `true` | apply the standard overlay background/border/shadow, matching the built-in panels |
+| `role` | – | ARIA role, e.g. `'listbox'` |
+| `ariaLabel` | `true` | `true` for the grid's standard "edit *column*, row *n*" label, a string for your own, `false` for none |
+
+**`ctx.done(opts)`** → the `{ value, remove }` object the grid commits from, with the keyboard and
+outside-click behaviour every built-in editor shares already wired: Enter commits, Escape cancels,
+Tab commits and moves one cell (Shift+Tab backwards), and a mousedown outside commits. It also tears
+down every surface the editor created, so there is nothing to clean up by hand.
+
+| Option | Default | Meaning |
+|---|---|---|
+| `value` | *(required)* | `() => string` (or a plain value), read once at commit |
+| `outside` | `'commit'` | what a mousedown outside the editor does: `'commit'` / `'cancel'` / `'ignore'`. The built-in single-choice dropdown uses `'cancel'` |
+| `keys` | – | per-key override, e.g. `{ enter: false, escape: 'cancel' }`. Each is `'commit'`, `'cancel'`, `'commit-and-move'`, or `false` to leave the key alone |
+| `onKey` | – | `(e) => boolean`, seen before the mapping above, for keys the editor handles itself (arrow navigation in a listbox, say). Return `true` to stop there. Torn down with the rest, so an editor never registers a keydown listener of its own |
+| `onCommit` / `onCancel` | – | run just before the grid is told, for editor-local bookkeeping |
+
+The returned object also exposes `commit()` and `cancel()`, for an editor that closes itself from
+its own UI (an OK button, say).
+
+> These surfaces exist on the **editor** context only, and deliberately so. A canvas grid's
+> performance comes from not building DOM per cell; one edit session is alive at a time (starting
+> another edit, scrolling the grid, or mousing down elsewhere all commit the current one first), so
+> what they mount is bounded at one editor and its popups no matter how many rows are loaded. The
+> renderer and `cellDecorator` contexts draw on the canvas and have no DOM equivalent.
+
+
 You can also register reusable editors/renderers by name, so multiple columns can reference them by string key:
 
 ```js
-import { registerCellEditor, registerCellRenderer, CellRenderers } from '../dist/jhgrid.esm.js';
+import { registerCellEditor, registerCellRenderer, CellRenderers } from '@jh-grid/jhgrid-js';
 
 registerCellEditor('color', (opts) => (ctx) => { /* same factory shape as above */ });
 registerCellRenderer('color', () => (ctx, info) => { /* draw a color swatch on the canvas */ });
@@ -890,9 +1077,3 @@ await grid.exportCsv({ filename: 'users.csv', full: true });
 grid.printGrid({ title: 'User List' });
 ```
 
-### `destroy()`
-Fully removes event listeners and DOM. Call this when unmounting a component or navigating away.
-
-```js
-grid.destroy();
-```

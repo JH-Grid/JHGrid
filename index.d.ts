@@ -34,10 +34,6 @@ export interface GridTheme {
   scrollbarThumb?: string;
   scrollbarRadius?:number;
   frozenBorder?:   string;
-  groupHeaderBg?:  string;
-  groupHeaderText?:string;
-  footerBg?:       string;
-  footerText?:     string;
   filterIconBg?:   string;
   sortIconBg?:     string;
   filterIconColor?:    string;
@@ -82,13 +78,13 @@ export interface GridTheme {
 
   /*
    * ── DOM surfaces ─────────────────────────────────────────────────────────────────────────
-   * Everything below styles the parts of the grid that are real DOM rather than canvas — the
+   * Everything below styles the parts of the grid that are real DOM rather than canvas - the
    * filter panel, context menus, the column chooser, cell editors, and the pager. They are
    * listed here because `theme` reaches them, but they are also bridged to CSS custom
    * properties (`--jhg-overlay-bg`, `--jhg-pager-bg`, …; see `GRID_CLASSES`). Each is emitted
    * as `var(--jhg-…, <theme value>)`: nothing in the library sets the variable, so the theme
    * value normally wins and a consumer who declares the variable takes over. Style through
-   * whichever suits — the theme for a value known at construction, the variable for one a
+   * whichever suits - the theme for a value known at construction, the variable for one a
    * stylesheet decides.
    */
   /** Background of panels, menus and dialogs. Defaults to `'#FFFFFF'`. */
@@ -101,13 +97,13 @@ export interface GridTheme {
   overlayDivider?:     string;
   /** Primary text on those surfaces. Defaults to `'#212121'`. */
   overlayText?:        string;
-  /** Secondary text — labels, counts. Defaults to `'#595959'`. */
+  /** Secondary text - labels, counts. Defaults to `'#595959'`. */
   overlayMutedText?:   string;
   /** Placeholder and hint text. Defaults to `'#909090'`. */
   overlayHintText?:    string;
   /** Hover background for a row in a list, such as a filter checklist. Defaults to `'#F5F5F5'`. */
   overlayHoverBg?:     string;
-  /** Hover — and keyboard-focus — background for a menu item. Defaults to `'#F0F0F0'`. */
+  /** Hover - and keyboard-focus - background for a menu item. Defaults to `'#F0F0F0'`. */
   overlayItemHoverBg?: string;
   /** Shadow under panels and dialogs. Defaults to `'0 4px 16px rgba(0,0,0,0.15)'`. */
   overlayShadow?:      string;
@@ -152,7 +148,7 @@ export interface CellContextMenuItemContext {
   col:      number;
   field:    string;
   rowData:  Record<string, unknown> | null;
-  /** Viewport coordinates of the invoking click (unlike the grid's internal canvas-local x/y) —
+  /** Viewport coordinates of the invoking click (unlike the grid's internal canvas-local x/y) -
    *  for positioning a host-built DOM overlay (e.g. a comment editor) at the invoked cell. */
   clientX:  number;
   clientY:  number;
@@ -177,7 +173,7 @@ export declare const CellRenderers: {
   /**
    * Renders `value` (an image URL or `data:` URI) scaled to fill the cell, via a shared,
    * byte-budgeted LRU cache that decodes through `fetch()` + `createImageBitmap()` resized to
-   * the cell's on-screen size — a large source image shown as a small thumbnail only ever costs
+   * the cell's on-screen size - a large source image shown as a small thumbnail only ever costs
    * a small decoded bitmap, not a full-resolution one. Non-blocking: shows a placeholder while
    * loading and redraws itself automatically once the image resolves. `fit: 'cover'` (default)
    * crops to fill like CSS `object-fit: cover`; `'contain'` letterboxes to show the whole image.
@@ -192,6 +188,17 @@ export declare const CellRenderers: {
   date(opts?: { format?: string; locale?: string; dateStyle?: 'full' | 'long' | 'medium' | 'short'; align?: 'left' | 'center' | 'right' }): CellRendererFn;
   currency(opts?: { locale?: string; currency?: string }): CellRendererFn;
   /** 드롭다운 셀 렌더러: 현재 값 + ▾ 화살표 표시 */
+  /**
+   * Draws the cell as a link - coloured, underlined, ellipsized to fit. `linked` decides per row
+   * whether it reads as actionable, so the look and the behaviour cannot be decided separately.
+   */
+  link(opts?: {
+    color?:      string;
+    mutedColor?: string;
+    underline?:  boolean;
+    align?:      'left' | 'center' | 'right';
+    linked?:     boolean | ((rowData: Record<string, unknown> | null) => boolean);
+  }): CellRendererFn;
   dropdown(opts?: { placeholder?: string }): CellRendererFn;
   /** 다중선택 셀 렌더러: 선택된 값 목록 + ▾ 화살표 표시 */
   multiselect(opts?: { placeholder?: string }): CellRendererFn;
@@ -215,12 +222,106 @@ export { CellRenderers as BuiltinRenderers };
 
 export declare const CellEditors: Record<string, (...args: any[]) => unknown>;
 
-/** Registers (or overrides) a `CellEditors` entry — the editor counterpart of `registerCellRenderer`. */
+/** Registers (or overrides) a `CellEditors` entry - the editor counterpart of `registerCellRenderer`. */
 export declare function registerCellEditor(name: string, factory: (...args: any[]) => unknown): void;
+
+/**
+ * The context every cell editor receives. Alongside the cell's geometry it carries the three
+ * anchored-DOM surfaces (`cellBox`, `popup`, `done`) a custom editor uses to mount its UI over a
+ * cell without doing any coordinate math of its own - see `core/EditorSurface.js`.
+ */
+export interface CellEditorCtx {
+  row:     number;
+  col:     number;
+  field:   string;
+  rowData: Record<string, unknown> | null;
+  /** Cell geometry relative to the grid wrapper. Prefer `cellBox()`/`popup()` over using these directly. */
+  x:    number;
+  y:    number;
+  colW: number;
+  rowH: number;
+  wrapper:      HTMLElement;
+  kbProxy:      HTMLInputElement;
+  theme:        Required<GridTheme>;
+  i18n:         Record<string, any>;
+  columnLabel:  string;
+  initialValue: string;
+
+  /** Commits the editor's current `value` to the cell and closes it. */
+  commit(): void;
+  /** Closes the editor, discarding whatever it holds. */
+  cancel(): void;
+  insertLineBreak(): void;
+  /** Moves the selection by (rows, cols) - what Tab/Enter do after committing. */
+  moveSel(dr: number, dc: number): void;
+  focusWrapper(): void;
+  /** Tells the grid not to reopen this cell's popup when a click closed it by landing on that cell. */
+  suppressReopen?(): void;
+
+  /**
+   * A box covering exactly the cell being edited, carrying the accent border the built-in editors
+   * draw. Wrapper-relative, so it tracks the grid on its own; removed with the editor.
+   */
+  cellBox<T extends HTMLElement = HTMLDivElement>(opts?: {
+    /** Place this element over the cell instead of making a <div>. Defaults `interactive` to true. */
+    el?:          T;
+    border?:      boolean;
+    interactive?: boolean;
+  }): T;
+
+  /**
+   * An empty panel anchored to the cell, mounted on <body> so it escapes any `overflow: hidden`
+   * between the grid and the page, and re-anchored as ancestors scroll or the window resizes.
+   */
+  popup(opts?: {
+    placement?: 'below' | 'above' | 'over';
+    align?:     'left' | 'right' | 'stretch';
+    minWidth?:  'cell' | number | null;
+    maxHeight?: number | null;
+    /** Flip past the cell and clamp into the viewport when the chosen side has no room. Default true. */
+    flip?:      boolean;
+    /** Apply the standard overlay background/border/shadow. Default true. */
+    chrome?:    boolean;
+    role?:      string;
+    /** true (default) for the grid's standard edit label, a string for your own, false for none. */
+    ariaLabel?: boolean | string;
+  }): HTMLDivElement;
+
+  /**
+   * Returns the element shape the grid commits from, and wires the keyboard and outside-click
+   * behaviour shared by every editor. Return this from a custom editor.
+   */
+  done(opts: {
+    value: (() => unknown) | unknown;
+    /** What a mousedown outside the editor does. Default 'commit'. */
+    outside?: 'commit' | 'cancel' | 'ignore';
+    keys?: {
+      enter?:  'commit' | 'cancel' | 'commit-and-move' | false;
+      escape?: 'commit' | 'cancel' | 'commit-and-move' | false;
+      tab?:    'commit' | 'cancel' | 'commit-and-move' | false;
+    };
+    /**
+     * Seen before the mapping above, for keys the editor handles itself (arrow navigation in a
+     * listbox, say). Return true to say it was handled and stop. Torn down with the rest.
+     */
+    onKey?(e: KeyboardEvent): boolean | void;
+    onCommit?(): void;
+    onCancel?(): void;
+  }): CellEditorEl;
+}
+
+/** What a cell editor returns: the grid reads `value` once at commit, then calls `remove()`. */
+export interface CellEditorEl {
+  readonly value: string;
+  remove(): void;
+  /** Present on the object `ctx.done()` returns, for an editor that closes itself from its own UI. */
+  commit?(): void;
+  cancel?(): void;
+}
 
 // Column Definition
 
-/** 드롭다운 옵션 항목 — 문자열 또는 { value, label } 객체 */
+/** 드롭다운 옵션 항목 - 문자열 또는 { value, label } 객체 */
 export type DropdownOption = string | { value: string; label?: string };
 
 export interface ColumnDef {
@@ -244,7 +345,7 @@ export interface ColumnDef {
   /** Date format for type: 'date' columns (e.g. 'YYYY-MM-DD', 'YY/MM/DD'). Applied to both rendering and clipboard copy. Default: 'YYYY-MM-DD'. */
   format?:      string;
   /** Custom editor: a CellEditors key (e.g. 'date') or a direct editor function receiving the editor context */
-  editor?:      string | ((ctx: Record<string, unknown>) => { value: string; remove: () => void } | null | undefined);
+  editor?:      string | ((ctx: CellEditorCtx) => CellEditorEl | null | undefined);
   /** Options forwarded to the named CellEditors factory when editor is a string key */
   editorOptions?: Record<string, unknown>;
   /**
@@ -260,19 +361,28 @@ export interface ColumnDef {
   /** 버튼 설정. type이 'button'일 때 사용. */
   button?:      ButtonColumnDef;
   /**
-   * 그룹헤더 행/푸터에 표시할 집계 함수. 내장 타입(`sum`/`avg`/`min`/`max`)은 `Number(row[field])`로
-   * 캐스팅해 계산하며 `NaN`은 무시한다. `count`는 non-null 값 개수. 커스텀 `fn`은 그룹(또는 전체)에
-   * 속한 원본 row 배열을 받아 값을 계산하고, `format`으로 표시 문자열을 지정할 수 있다.
-   *
-   * 행 그룹핑을 제공하는 플러그인(`setGrouping`)이 설치되어 있을 때만 의미가 있다. 플러그인 없이
-   * 지정하면 값은 보관되지만 아무 곳에도 표시되지 않는다 — 집계를 읽고 그리는 쪽이 플러그인이다.
+   * A small always-there click hotspot pinned to this column's right edge, independent of the
+   * column's `type` (unlike `button`, which turns the *whole* cell into a button). Give it an
+   * `icon` and the grid draws it too, using the same width it hit-tests against.
    */
-  aggregate?:   'sum' | 'avg' | 'count' | 'min' | 'max' | {
-    fn:      (rows: Record<string, unknown>[], field: string) => number | string;
-    format?: (value: number | string) => string;
-  };
+  cellButton?:  CellButtonDef;
   /** When true, renders a clickable checkbox in this column's last header row. Fires `onHeaderCheckboxChange` on click. */
   headerCheckbox?: boolean;
+}
+
+export interface CellButtonDef {
+  /** Hotspot width in px, measured in from the cell's right edge. Defaults to 20 (the dropdown arrow's width). */
+  width?:     number;
+  /**
+   * Glyph to draw in the hotspot, e.g. '+'. Omit it and the grid draws nothing (the hotspot stays
+   * clickable) - which is what a host wanting to draw its own mark through `cellDecorator` does.
+   */
+  icon?:      string;
+  /** 'plain' drops the shaded band behind the icon; the default draws it, matching a dropdown cell. */
+  style?:     'plain';
+  iconSize?:  number;
+  iconColor?: string;
+  onClick(rowIndex: number, rowData: Record<string, unknown> | null, field: string): void;
 }
 
 export type ButtonVariant = 'primary' | 'success' | 'danger' | 'neutral';
@@ -306,8 +416,8 @@ export interface ColumnValidation {
   maxLength?:   number;
   /**
    * Custom check, run after all built-in rules pass. Return `true` (valid),
-   * `false` (invalid — uses `message` or the default i18n message), or a
-   * string (invalid — used verbatim as the error message).
+   * `false` (invalid - uses `message` or the default i18n message), or a
+   * string (invalid - used verbatim as the error message).
    */
   validator?:   (value: string, rowData: Record<string, unknown>) => boolean | string;
   /** Overrides the default i18n message for every built-in rule above. */
@@ -318,7 +428,7 @@ export interface ColumnValidation {
 
 export interface HeaderRowDef {
   label?:   string;
-  /** Field names this group spans — updates automatically after column reorder */
+  /** Field names this group spans - updates automatically after column reorder */
   fields?:  string[];
   colspan?: number;
   rowspan?: number;
@@ -326,12 +436,11 @@ export interface HeaderRowDef {
 }
 
 /**
- * Computes grouped-header cell layout from `opts.headerRows` + the current column order — the
+ * Computes grouped-header cell layout from `opts.headerRows` + the current column order - the
  * same layout engine the canvas header draw uses internally, exposed publicly so a custom
- * exporter/renderer can reproduce the same merged-header shape. Returns the same cell shape as
- * {@link ExcelHeaderCell} (declared further below, alongside `ExcelExportSchema`).
+ * exporter/renderer can reproduce the same merged-header shape.
  */
-export declare function computeHeaderCells(headerRows: HeaderRowDef[][] | undefined, columns: string[]): ExcelHeaderCell[];
+export declare function computeHeaderCells(headerRows: HeaderRowDef[][] | undefined, columns: string[]): HeaderCell[];
 
 // Data Source
 
@@ -349,7 +458,7 @@ export interface GridFilterState {
   /**
    * Per-column filter values. A plain `string` is a substring-match text filter
    * (setFilter()); a `string[]` is a Set filter's exact-match checkbox selection
-   * (setFilterValues()) — interpretation of both is entirely up to fetchData/fetchMeta.
+   * (setFilterValues()) - interpretation of both is entirely up to fetchData/fetchMeta.
    */
   filters: Record<string, string | string[]>;
   /** Global quick filter term (setQuickFilter()), '' when inactive. Interpretation (which
@@ -366,46 +475,32 @@ export interface GridState {
   frozenCols:    number;
   frozenColsRight: number;
   sorts:         { field: string; dir: 'asc' | 'desc' }[];
-  /** See {@link GridFilterState.filters} — string (text filter) or string[] (Set filter) per field. */
+  /** See {@link GridFilterState.filters} - string (text filter) or string[] (Set filter) per field. */
   filters:       Record<string, string | string[]>;
   /** See {@link GridFilterState.quickFilter}. */
   quickFilter:   string;
-  /**
-   * Row-grouping state, or `null` when the grid isn't grouped. Always present in the snapshot
-   * shape (even as `null`), so a `getState()`/`setState()` round-trip never drops this key.
-   * Single-field grouping keeps the legacy shape; multi-field grouping's `collapsedKeys` are
-   * path arrays.
-   */
-  grouping:      { field: string; collapsedKeys: string[] } | { fields: string[]; collapsedKeys: string[][] } | null;
-  /** Tree/hierarchical row state, or `null` when unused. Same always-present shape as {@link GridState.grouping}. */
-  treeData:      { idField: string; parentField: string; collapsedKeys: string[][] } | null;
-  /**
-   * Active color filters, field → color (e.g. `{ COL_4: 'rgba(22,163,74,0.14)' }`), or `null`
-   * when none are set. Same always-present shape as {@link GridState.grouping}.
-   */
-  colorFilters:  Record<string, string> | null;
-  /** Selected row indices (rowSelection mode 'single'|'multi'). Always present (as `[]` when nothing is selected) — row selection is installed unconditionally, even on a base `@jhgrid/jhgrid` import. */
+  /** Selected row indices (rowSelection mode 'single'|'multi'). Always present (as `[]` when nothing is selected) - row selection is installed unconditionally, even on a base `@jh-grid/jhgrid-js` import. */
   selectedRows:  number[];
   /** `field -> checked` for every `headerCheckbox` column's header checkbox (see `setHeaderCheckbox`/`getHeaderCheckbox`). */
   headerCheckboxState: Record<string, boolean>;
   /**
    * Definitions of columns added via `addColumn()` that haven't been committed yet (see
-   * `getNewColumns()`/`commitColumns()`) — restored via `_addColumnImpl` before column order, so a
+   * `getNewColumns()`/`commitColumns()`) - restored via `_addColumnImpl` before column order, so a
    * `setState()` round-trip doesn't silently drop a locally-added column. Function-valued def
    * fields (a custom `renderer`/`editor`, function-form `options`, a `validation.validator`, a
-   * `button.onClick`) survive an in-memory round-trip but won't survive `JSON.stringify`/`parse` —
+   * `button.onClick`) survive an in-memory round-trip but won't survive `JSON.stringify`/`parse` -
    * same inherent limitation as any function-valued columnDefs entry.
    */
   localColumns: (Omit<ColumnDef, 'field'> & { field: string })[];
   /** Field names of server columns marked for deletion via `deleteColumn()` but not yet committed (see `getDeletedColumns()`/`commitColumns()`). */
   deletedColumns: string[];
   /**
-   * Unsaved row work — the row counterpart of {@link GridState.localColumns} /
+   * Unsaved row work - the row counterpart of {@link GridState.localColumns} /
    * {@link GridState.deletedColumns}, which have always been carried here.
    *
    * Everything is named by **server index**, never by screen position: a screen position only
    * means something alongside the exact arrangement that produced it, and the point of a snapshot
-   * is to outlive that. `restoring` therefore assumes the same result set — the same query, the
+   * is to outlive that. `restoring` therefore assumes the same result set - the same query, the
    * same underlying rows. Restore against changed server data and the indices name different
    * records, the same way {@link GridState.filters} assumes the fields still exist.
    *
@@ -419,9 +514,9 @@ export interface GridState {
      * keyed separately they would be two lists that have to agree about ordering.
      */
     added:   { anchor: number; data: Record<string, unknown>; edits: Record<string, string> }[];
-    /** Server indices removed from the screen — see {@link JHGrid.getRemovedRows}. */
+    /** Server indices removed from the screen - see {@link JHGrid.getRemovedRows}. */
     removed: number[];
-    /** Server indices marked for deletion — see {@link JHGrid.getDeletedRows}. */
+    /** Server indices marked for deletion - see {@link JHGrid.getDeletedRows}. */
     marked:  number[];
     /** Unsaved cell edits on server rows, as `serverIndex -> field -> value`. */
     edits:   Record<number, Record<string, string>>;
@@ -451,7 +546,6 @@ export interface GridI18n {
   filterResetAll?:       string;
   filterClose?:          string;
   filterDialog?:         (col: string) => string;
-  filterColorLabel?:     string;
   filterValuesLabel?:    string;
   filterSelectAll?:      string;
   /** Placeholder for the tag filter's search box (see {@link JHGridOptions.fetchFilterValues}). */
@@ -507,7 +601,7 @@ export interface GridI18n {
   rowInsertBelow?:       string;
   /** Label for the "add row" control (e.g. a toolbar button a host wires up itself). */
   rowAddEnd?:            string;
-  /** Row context menu label for deleting a locally-added (unsaved) row — always removed outright. */
+  /** Row context menu label for deleting a locally-added (unsaved) row - always removed outright. */
   rowDelete?:            string;
   /** Row context menu label for marking a server row deleted (`deleteRow(i, { permanent: false })`). */
   rowDeleteMark?:        string;
@@ -535,9 +629,6 @@ export interface GridI18n {
   rowsSelectedAnnounce?:      (n: number) => string;
   unsavedEditsWarning?:  string;
   exportCsvFilename?:    string;
-  /** Default filename for an Excel-format export, kept separate from `exportCsvFilename` above since `exportCsv()` always uses that one. */
-  exportExcelFilename?:  string;
-  exportSheetName?:      string;
   printButton?:          string;
   validationRequired?:   (col: string) => string;
   validationPattern?:    (col: string) => string;
@@ -551,22 +642,15 @@ export interface GridI18n {
   pagerNext?:            string;
   pagerLast?:            string;
   pagerPageLabel?:       (page: number, pageCount: number) => string;
-  aggSum?:               string;
-  aggAvg?:               string;
-  aggCount?:             string;
-  aggMin?:               string;
-  aggMax?:               string;
-  groupLabel?:           (field: string, key: string, count: number) => string;
-  groupFooterLabel?:     string;
 }
 
-/** Korean locale strings — pass as i18n option for Korean UI */
+/** Korean locale strings - pass as i18n option for Korean UI */
 export declare const KO_I18N: Required<GridI18n>;
 
-/** Japanese locale strings — pass as i18n option for Japanese UI */
+/** Japanese locale strings - pass as i18n option for Japanese UI */
 export declare const JA_I18N: Required<GridI18n>;
 
-/** Simplified Chinese locale strings — pass as i18n option for Chinese UI */
+/** Simplified Chinese locale strings - pass as i18n option for Chinese UI */
 export declare const ZH_I18N: Required<GridI18n>;
 
 // Pagination
@@ -576,7 +660,7 @@ export interface PaginationOptions {
   enabled:   boolean;
   /**
    * Rows per page. Fixed at construction time (not changeable at runtime).
-   * Also becomes the effective `chunkSize` — `chunkSize` is ignored when set.
+   * Also becomes the effective `chunkSize` - `chunkSize` is ignored when set.
    * Default: 50.
    */
   pageSize?: number;
@@ -596,12 +680,12 @@ export interface JHGridOptions {
   fetchData?:       (page: number, size: number, state?: GridFilterState | null) => Promise<GridData>;
   /**
    * `fetchMeta`+`fetchData` collapsed into one call, for a backend that returns the page and the
-   * total together — a `COUNT(*) OVER()` alongside the paged rows, say. Resolve
+   * total together - a `COUNT(*) OVER()` alongside the paged rows, say. Resolve
    * `{ rows, totalRows }`, plus `columns` unless `columnDefs` names them.
    *
    * `state` is the sort and filter the grid wants applied, exactly as {@link fetchData} receives
    * it: honour it server-side and return `totalRows` for the filtered result, not the table. A
-   * callback that ignores the argument still works — it simply never filters or sorts, which is
+   * callback that ignores the argument still works - it simply never filters or sorts, which is
    * what every `fetchPage` grid did before the argument was passed at all.
    *
    * The grid asks for chunk 0 once at boot even though it needs both the count and the rows from
@@ -616,7 +700,7 @@ export interface JHGridOptions {
    * memory (prototyping, small/medium lookup tables, tests). Columns are inferred from
    * `columnDefs` if given, else from the keys of `data[0]`. Filtering/sorting/quick-filter are
    * applied against the array directly with the same semantics a host's own `fetchMeta`/
-   * `fetchData` are expected to follow (see {@link GridFilterState}) — there is no indexing, so
+   * `fetchData` are expected to follow (see {@link GridFilterState}) - there is no indexing, so
    * this re-scans the full array on every state change and isn't a fit for very large datasets.
    * Ignored if `fetchMeta`/`fetchData`/`fetchPage` is also provided.
    */
@@ -640,8 +724,8 @@ export interface JHGridOptions {
    */
   selectionMoveMs?: number;
   /**
-   * Glide length in ms for mouse-wheel scrolling. Deltas smaller than one row — a precision
-   * trackpad's dense stream, which is already smooth — are applied immediately regardless.
+   * Glide length in ms for mouse-wheel scrolling. Deltas smaller than one row - a precision
+   * trackpad's dense stream, which is already smooth - are applied immediately regardless.
    * `0` applies every wheel delta immediately. Forced to 0 under
    * `prefers-reduced-motion: reduce`. Default: 120.
    */
@@ -664,7 +748,7 @@ export interface JHGridOptions {
    * Enables classic fixed-size pagination (a built-in pager bar with
    * Prev/Next/page-number controls) instead of continuous virtual scrolling.
    * Row indices everywhere in the public API (getEdits(), onCellChange, setCellValue())
-   * stay global/absolute regardless of this option — pagination only changes what's
+   * stay global/absolute regardless of this option - pagination only changes what's
    * scrollable/visible at once.
    */
   pagination?:      PaginationOptions;
@@ -676,25 +760,35 @@ export interface JHGridOptions {
    * filtered/sorted dataset client-side first (row data, unlike column metadata, isn't
    * normally resident in memory under server-paged virtualization).
    * Runs one full-dataset scan via `fetchData` after every load/reload; dragging is disabled
-   * until that scan completes, and while row grouping or tree data is active. Default: false.
+   * until that scan completes, and while an installed plugin supplies its own alternate row
+   * source. Default: false.
    */
   rowReorder?:      boolean;
+  /**
+   * Worker-pool size for the full-dataset scan `rowReorder` (or a plugin calling its own
+   * full-table scan) runs via `fetchData`. Default: `navigator.hardwareConcurrency` clamped to
+   * `[2, 8]`, so low-core machines aren't flooded with concurrent requests while the scan still
+   * parallelizes meaningfully.
+   */
+  fullScanConcurrency?: number;
+  /** Page size used by that same full-dataset scan. Default: falls back to {@link JHGridOptions.chunkSize}. */
+  fullScanPageSize?:    number;
   editableCols?:    string[] | '*';
   /**
    * What {@link JHGrid.deleteRow} does to a **server** row when the call doesn't say.
    *
-   * - `'mark'` (default) — the row stays on screen, dimmed with a strikethrough, and is reported
+   * - `'mark'` (default) - the row stays on screen, dimmed with a strikethrough, and is reported
    *   by {@link JHGrid.getDeletedRows}. Suits a screen with an explicit save step, where the user
    *   should be able to change their mind before committing.
-   * - `'permanent'` — the row comes off the screen and is reported by
+   * - `'permanent'` - the row comes off the screen and is reported by
    *   {@link JHGrid.getRemovedRows}. Suits a list that commits as you go.
    *
    * Either way the server is untouched; the grid only records the choice. Rows added with
-   * {@link JHGrid.addRow} ignore this — they were never sent anywhere, so there is nothing to
+   * {@link JHGrid.addRow} ignore this - they were never sent anywhere, so there is nothing to
    * mark and they always go immediately.
    *
    * `deleteRow(i, { permanent })` overrides it per call, because one screen can legitimately need
-   * both — marking a saved record while discarding a draft, say.
+   * both - marking a saved record while discarding a draft, say.
    */
   deleteMode?:      'mark' | 'permanent';
   /**
@@ -725,7 +819,7 @@ export interface JHGridOptions {
    * named items, omitted shows all of them.
    *
    * Valid keys: `'col-insert-left'`, `'col-insert-right'`, `'col-delete'`, `'row-insert-below'`,
-   * `'row-delete'`. Unrelated to {@link JHGridOptions.cellContextMenuExtraItems} below — that adds
+   * `'row-delete'`. Unrelated to {@link JHGridOptions.cellContextMenuExtraItems} below - that adds
    * items instead of filtering these, and always applies regardless of this option.
    */
   cellContextMenuItems?: false | ('col-insert-left' | 'col-insert-right' | 'col-delete' | 'row-insert-below' | 'row-delete')[];
@@ -735,13 +829,15 @@ export interface JHGridOptions {
    * menu opens for a given cell; return `null`/`undefined`/`[]` to add nothing for that cell.
    *
    * This is the one general-purpose extension point for host- or plugin-supplied context menu
-   * actions — the grid renders the label, routes the click to `onClick`, and closes the menu
+   * actions - the grid renders the label, routes the click to `onClick`, and closes the menu
    * afterwards, same as a built-in item. It has no opinion about what `onClick` does.
    */
   cellContextMenuExtraItems?: (ctx: CellContextMenuItemContext) => CellContextMenuItem[] | null | undefined;
   columnDefs?:      ColumnDef[];
   /** Multi-row header groups. Each element is one group-header row. */
   headerRows?:      HeaderRowDef[][];
+  /** Adds an Excel-style A/B/C/... row above the normal header row(s), one non-interactive cell per column (no sort/filter/checkbox). Default: false. */
+  columnLetterHeader?: boolean;
   /** Show a built-in row-number column on the left. Default: true. */
   showRowNumbers?:  boolean;
   /** Width of the row-number column in pixels. Default: 50. */
@@ -764,6 +860,8 @@ export interface JHGridOptions {
   // Callbacks
   /** oldValue is the pre-edit value: the prior edit if the cell was already dirty, otherwise the row's original data. */
   onCellChange?:    (params: { row: number; field: string; newValue: string; oldValue: string }) => void;
+  /** Fired on every cell double-click, editable or not - alongside the built-in edit-start, not instead of it. */
+  onCellDoubleClick?: (rowIndex: number, rowData: Record<string, unknown> | null, field: string) => void;
   /** Fired when the cell/range selection changes. null = selection cleared. */
   onSelectionChange?: (sel: { type: 'single'; row: number; col: number } | { type: 'range'; r1: number; c1: number; r2: number; c2: number } | null) => void;
   /** Fired after sorts are applied or cleared. Empty array = all sorts cleared. */
@@ -774,7 +872,7 @@ export interface JHGridOptions {
    * Looks up candidate values for a column's header filter, given whatever the user has typed.
    * Return a bounded list; only what fits the query is useful, and the panel shows it as-is.
    *
-   * The tag picker itself is **not** conditional on this — it appears on any column whose values
+   * The tag picker itself is **not** conditional on this - it appears on any column whose values
    * could not be enumerated locally (the ones where the checklist does not appear). What this
    * changes is where the candidates come from. Omit it and they are scanned out of the rows
    * already loaded, and the list is labelled as covering only those; supply it and it answers for
@@ -798,13 +896,15 @@ export interface JHGridOptions {
   onColumnReorder?: (columns: string[]) => void;
   /** Fired after a column is resized (mouse-up). */
   onColumnResize?:  (field: string, width: number) => void;
+  /** Fired after hideColumn()/showColumn() or the column chooser's Apply changes which columns are hidden. Not fired if the change didn't actually alter the hidden set. */
+  onColumnVisibilityChange?: (hiddenColumns: string[]) => void;
   /** Fired after a row's individual height is resized by dragging a boundary in the row-number gutter (mouse-up). */
   onRowHeightResize?: (rowIndex: number, height: number) => void;
   /**
    * Fired after a row drag-reorder completes (requires `rowReorder: true`).
    * `fromIndex`/`toIndex` are absolute row indices at drop time; `rowData` is the moved row's
    * raw data. Row-indexed transient state (edits, selection, undo history) is cleared on
-   * reorder the same way it is on a sort/filter change — persist `toIndex` server-side here if
+   * reorder the same way it is on a sort/filter change - persist `toIndex` server-side here if
    * the new order needs to survive a refresh.
    */
   onRowReorder?:    (fromIndex: number, toIndex: number, rowData: Record<string, unknown>) => void;
@@ -824,7 +924,7 @@ export interface JHGridOptions {
   onHeaderCheckboxChange?: (field: string, checked: boolean) => void;
   /**
    * Optional callback returning a CSS color string for a row, or null/undefined for default.
-   * Called on every render — keep it fast.
+   * Called on every render - keep it fast.
    * @example rowHighlighter: (row) => row.status === 'ERROR' ? 'rgba(239,68,68,0.12)' : null
    */
   rowHighlighter?:  (rowData: Record<string, unknown> | null, rowIndex: number) => string | null | undefined;
@@ -832,7 +932,7 @@ export interface JHGridOptions {
    * Optional callback returning a CSS color string for an individual cell's background,
    * or null/undefined for no override. Painted on top of the row background/highlight
    * (rowHighlighter, selection) and beneath cell content/renderers. Called for every
-   * visible cell on every render — keep it fast. `rowData` is null for rows not yet
+   * visible cell on every render - keep it fast. `rowData` is null for rows not yet
    * loaded from the server, so check for that before reading fields. Exceptions thrown
    * here are caught and logged; they don't interrupt rendering.
    * @example cellBackground: (row, rowIndex, field) => row && field === 'score' && row.score < 60 ? '#fee2e2' : null
@@ -840,12 +940,12 @@ export interface JHGridOptions {
   cellBackground?:  (rowData: Record<string, unknown> | null, rowIndex: number, field: string, colIndex: number) => string | null | undefined;
   /**
    * Optional callback that draws on top of a cell after everything else in it (content,
-   * gridlines, strikethrough, validation border) — close to the call shape of a
+   * gridlines, strikethrough, validation border) - close to the call shape of a
    * `columnDefs[i].renderer` (`(ctx, args) => void`), but invoked for every rendered cell instead
    * of replacing one column's content, and `args` includes `field` since a decorator (unlike a
    * column renderer, already scoped to one column) needs it to tell columns apart. Use it for a
    * small corner mark, icon, or badge that layers on top of whatever the cell already shows.
-   * Called for every visible, loaded cell on every render — keep it fast, and do nothing (return
+   * Called for every visible, loaded cell on every render - keep it fast, and do nothing (return
    * without drawing) for cells that need no mark. Exceptions thrown here are caught and logged;
    * they don't interrupt rendering.
    * @example cellDecorator: (ctx, { x, y, w, field, rowIndex }) => { if (hasFlag(rowIndex, field)) { ctx.fillStyle = 'red'; ctx.beginPath(); ctx.moveTo(x + w - 8, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + 8); ctx.fill(); } }
@@ -855,16 +955,17 @@ export interface JHGridOptions {
    * Optional callback returning tooltip text to show while the pointer idles over a cell, or
    * null/undefined for none. Same call shape as `cellBackground`. Shown immediately (no hover
    * delay), and takes priority over the built-in overflow-text tooltip and over anything a plugin
-   * supplies via its own `cellTooltip` — a validation error on the cell still wins over this.
+   * supplies via its own `cellTooltip` - a validation error on the cell still wins over this.
    * `rowData` is null for rows not yet loaded from the server.
    * @example cellTooltip: (row, rowIndex, field) => hasNote(rowIndex, field) ? getNote(rowIndex, field) : null
    */
   cellTooltip?:     (rowData: Record<string, unknown> | null, rowIndex: number, field: string, colIndex: number) => string | null | undefined;
 }
 
-// Excel export schema
+// Header cell layout (see computeHeaderCells)
 
-export interface ExcelHeaderCell {
+/** One cell of a computed grouped-header layout - a leaf column header or a group spanning several. */
+export interface HeaderCell {
   row:      number;
   col:      number;
   colspan:  number;
@@ -872,18 +973,6 @@ export interface ExcelHeaderCell {
   label:    string | null;
   align:    string | null;
   isLeaf:   boolean;
-}
-
-export interface ExcelExportSchema {
-  sheetName:      string;
-  columns:        string[];
-  columnLabels:   string[];
-  headerCells:    ExcelHeaderCell[] | undefined;
-  includeHeaders: boolean;
-  colWidths:      number[];
-  headerBg:       string;
-  headerText:     string;
-  headerBorder:   string;
 }
 
 // JHGrid
@@ -902,7 +991,7 @@ export interface JHGridPlugin {
 export declare class JHGrid {
   /**
    * Installs a plugin. Installing the same object twice is a no-op. Plugin packages call this
-   * on import, so an application normally never has to — import the package and its API appears
+   * on import, so an application normally never has to - import the package and its API appears
    * on the grid instance.
    */
   static use(plugin: JHGridPlugin): void;
@@ -911,8 +1000,8 @@ export declare class JHGrid {
 
   // Boot
   /**
-   * Resolves once the first `fetchMeta`/`fetchData` boot has settled — either way, including
-   * on failure — so that `this._columns` and friends are populated and any structural API will
+   * Resolves once the first `fetchMeta`/`fetchData` boot has settled - either way, including
+   * on failure - so that `this._columns` and friends are populated and any structural API will
    * actually run instead of silently no-op'ing while a boot is still in flight.
    *
    * Await it before calling one straight after construction:
@@ -921,13 +1010,13 @@ export declare class JHGrid {
    * await grid.ready();
    * grid.hideColumn('email');
    * ```
-   * Not needed inside a user-triggered handler (a button's `onclick`, say) — by then the page,
+   * Not needed inside a user-triggered handler (a button's `onclick`, say) - by then the page,
    * and therefore the initial boot, has necessarily finished.
    */
   ready(): Promise<void>;
 
   /**
-   * Schedules a repaint without touching data, scroll, edits, filters, or sort — for when
+   * Schedules a repaint without touching data, scroll, edits, filters, or sort - for when
    * something a `cellBackground`/`rowHighlighter` callback reads changed outside the grid (host
    * state a plugin keeps, say) and the next frame needs to pick it up. Much cheaper than
    * {@link JHGrid.refresh} when nothing about the data itself changed.
@@ -970,7 +1059,7 @@ export declare class JHGrid {
    */
   setCellValue(row: number, field: string, value: string): void;
   /**
-   * Bulk counterpart to setCellValue() — applies every entry through the same
+   * Bulk counterpart to setCellValue() - applies every entry through the same
    * pipeline as one edit/undo step and a single redraw, instead of one redraw
    * per cell. Use this for large-scale updates (e.g. a header checkbox toggling
    * every filtered row) where looping setCellValue() would redraw once per row.
@@ -1023,7 +1112,7 @@ export declare class JHGrid {
   /** Remove a single column filter (text or Set) and reload. */
   removeFilter(field: string): void;
   /**
-   * Set the global quick filter (a single term searched across every column — interpretation
+   * Set the global quick filter (a single term searched across every column - interpretation
    * is entirely up to fetchData/fetchMeta, via state.quickFilter) and reload. Pass null/''
    * to clear. There is no built-in search box; wire this to your own input.
    */
@@ -1086,7 +1175,7 @@ export declare class JHGrid {
   // Row height
   /** Changes the default pixel height used by every row without its own override. Throws if height is not a positive finite number. */
   setRowHeight(height: number): void;
-  /** Sets rowIndex's individual pixel height (Excel-style row resize — same as dragging a row-number gutter boundary). Throws if height is not a positive finite number or rowIndex is out of range. */
+  /** Sets rowIndex's individual pixel height (Excel-style row resize - same as dragging a row-number gutter boundary). Throws if height is not a positive finite number or rowIndex is out of range. */
   setRowHeight(rowIndex: number, height: number): void;
   /** Returns rowIndex's current pixel height (its own override, or the shared default). */
   getRowHeight(rowIndex: number): number;
@@ -1114,7 +1203,7 @@ export declare class JHGrid {
   addColumn(field: string, def?: Omit<ColumnDef, 'field'>, opts?: { index?: number }): boolean;
   /**
    * Deletes a column. Local columns (added via addColumn) are removed immediately.
-   * Server columns are hidden from view — call getDeletedColumns() to collect
+   * Server columns are hidden from view - call getDeletedColumns() to collect
    * their field names for server-side processing, or undeleteColumn() to restore.
    */
   deleteColumn(field: string): boolean;
@@ -1125,7 +1214,7 @@ export declare class JHGrid {
   /** Returns the field names of all server columns marked for deletion. */
   getDeletedColumns(): string[];
   /**
-   * Call after your own save request has persisted pending column changes to the server — marks
+   * Call after your own save request has persisted pending column changes to the server - marks
    * them as no longer pending (getNewColumns() / getDeletedColumns() stop reporting them) without
    * touching the rendered grid. Pass a field name, an array of field names, or omit to commit every
    * pending column change at once. Fields with no pending add/delete are silently ignored.
@@ -1141,7 +1230,7 @@ export declare class JHGrid {
    *
    * Resolves once the grid is showing that state. If the snapshot carries `sorts`, `filters` or
    * `quickFilter`, those only describe what the *server* should return, so the grid asks again and
-   * the promise waits for the answer — otherwise the header would claim a filter over rows that
+   * the promise waits for the answer - otherwise the header would claim a filter over rows that
    * were never re-fetched. A snapshot that only moves columns around has nothing to ask for and
    * resolves immediately.
    *
@@ -1158,7 +1247,7 @@ export declare class JHGrid {
   // Export
   /**
    * Download data as a CSV file.
-   * By default only loaded (cached) chunks are included — pass `full: true`
+   * By default only loaded (cached) chunks are included - pass `full: true`
    * to fetch every row matching the current filter/sort state (text filters
    * via the server, plus any active color filter) and export the complete
    * filtered dataset.
@@ -1175,13 +1264,13 @@ export declare class JHGrid {
   // Row add / delete (client-side)
   /**
    * Adds a new row (client-side only). By default it appends at the bottom; `{ index }` puts it
-   * at that visual position instead — **anywhere**, including between server rows. Returns the
+   * at that visual position instead - **anywhere**, including between server rows. Returns the
    * zero-based visual index of the new row.
    *
    * The row is anchored to the record it precedes, not to the screen position, so it stays where
    * you put it as rows above are added or removed. A sort or filter is the one thing that moves
    * it: the anchor described a place in the old ordering, which the new one replaces, so the row
-   * survives but goes to the end. It is never hidden by a filter — a blank new row matches
+   * survives but goes to the end. It is never hidden by a filter - a blank new row matches
    * almost nothing, and hiding it is indistinguishable from having lost it.
    */
   addRow(rowData?: Record<string, unknown>, opts?: { index?: number }): number;
@@ -1196,7 +1285,7 @@ export declare class JHGrid {
    *   It is reported by {@link getRemovedRows} and can still be brought back with
    *   {@link undeleteRow}.
    *
-   * Neither server case touches the server — the grid only records what you chose. A sort or
+   * Neither server case touches the server - the grid only records what you chose. A sort or
    * filter discards both kinds, since they are recorded against a row numbering the reload
    * replaces.
    */
@@ -1210,7 +1299,7 @@ export declare class JHGrid {
   /** Returns shallow copies of all locally added rows (via addRow). */
   getNewRows(): Record<string, unknown>[];
   /**
-   * Server indices of rows marked for deletion — the ones still on screen with a strikethrough.
+   * Server indices of rows marked for deletion - the ones still on screen with a strikethrough.
    * Server indices rather than screen positions, so removing some other row cannot change what
    * this names.
    */
@@ -1218,7 +1307,7 @@ export declare class JHGrid {
   /**
    * Server indices of rows removed from the screen via `deleteRow(i, { permanent: true })`.
    * Kept separate from {@link getDeletedRows} because the two mean different things to whoever
-   * chose them — a mark is still being decided, a removal has been decided — but both still need
+   * chose them - a mark is still being decided, a removal has been decided - but both still need
    * deleting server-side.
    */
   getRemovedRows(): number[];
@@ -1249,7 +1338,7 @@ export declare class DataManager {
   constructor(opts: {
     fetchData: JHGridOptions['fetchData'];
     chunkSize?: number;
-    /** LRU limit — evicts oldest chunk when exceeded. Default: 50 */
+    /** LRU limit - evicts oldest chunk when exceeded. Default: 50 */
     maxChunks?: number;
   });
   getRow(rowIndex: number): Record<string, unknown> | null;
@@ -1264,7 +1353,7 @@ export declare class DataManager {
 /**
  * Class names applied to the grid's DOM surfaces (the canvas-painted body is styled through
  * {@link GridTheme} instead). Exposed so consumer code can target a surface without hardcoding
- * the strings — see "Styling with your own CSS" in the README for the full table and the
+ * the strings - see "Styling with your own CSS" in the README for the full table and the
  * matching `--jhg-*` custom properties.
  */
 export declare const GRID_CLASSES: {
@@ -1278,7 +1367,6 @@ export declare const GRID_CLASSES: {
   menu:     string;
   menuItem: string;
   btn:      string;
-  swatch:   string;
   pager:    string;
   pagerBtn: string;
   editor:   string;

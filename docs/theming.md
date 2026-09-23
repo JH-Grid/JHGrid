@@ -1,6 +1,6 @@
 ---
 title: Theming
-nav_order: 4
+nav_order: 5
 ---
 
 # Theming
@@ -58,10 +58,6 @@ canvas; see the note under the table below.
 | `scrollbarBg` | `#F0F0F0` | Scrollbar track background |
 | `scrollbarThumb` | `#C0C0C0` | Scrollbar thumb color |
 | `scrollbarRadius` | `4` | Scrollbar thumb border radius (px) |
-| `groupHeaderBg` | `#EEF2F7` | Multi-level header group cell background |
-| `groupHeaderText` | `#1E293B` | Multi-level header group cell text |
-| `footerBg` | `#F2F2F2` | Aggregate footer row background |
-| `footerText` | `#1E293B` | Aggregate footer row text |
 | `filterIconBg` | `rgba(245,158,11,0.18)` | Background of the filter icon on a header with an active filter |
 | `filterIconColor` | `#C87B00` | Filter icon color |
 | `sortIconBg` | `rgba(46,117,182,0.12)` | Background of the sort icon on a header with an active sort |
@@ -146,7 +142,7 @@ properties scoped to the grid. Overriding a variable in your own CSS wins over t
 | `.jhg-panel` | Filter / sort panel |
 | `.jhg-dialog` | Column visibility chooser |
 | `.jhg-menu` / `.jhg-menu-item` | Context menus and their rows |
-| `.jhg-btn` / `.jhg-swatch` | Buttons and color swatches inside overlays |
+| `.jhg-btn` | Buttons inside overlays |
 | `.jhg-pager` / `.jhg-pager-btn` | Pagination bar and its buttons |
 | `.jhg-editor` | Cell editors and the filter search input |
 | `.jhg-loading` / `.jhg-empty` / `.jhg-tooltip` | Loading overlay, empty state, cell tooltip |
@@ -155,7 +151,7 @@ These strings are also exported as `GRID_CLASSES`, for code that wants to target
 hardcoding the class name:
 
 ```js
-import { GRID_CLASSES } from '../dist/jhgrid.esm.js';
+import { GRID_CLASSES } from '@jh-grid/jhgrid-js';
 
 document.querySelectorAll(`.${GRID_CLASSES.menuItem}`);
 ```

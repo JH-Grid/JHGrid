@@ -1,6 +1,6 @@
 ---
 title: Live Demo
-nav_order: 2
+nav_order: 3
 ---
 
 # Live Demo
@@ -9,7 +9,7 @@ nav_order: 2
 
 Four small grids, each isolating one thing: raw scroll performance at 1,000,000 rows, inline
 editing, filtering, and frozen columns. Every grid on this page is a real `JHGrid` instance
-loaded straight from the [jsDelivr CDN build](../README.md#option-b-cdn-single-bundled-script);
+loaded straight from the [jsDelivr CDN build](../README.md#option-c-cdn-single-bundled-script);
 view source on this page to see the exact code.
 
 <div id="jhg-demo-boot-error" style="display:none;background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;
@@ -52,7 +52,8 @@ stay put on the left, **Score** stays put on the right.
 
 <style>
   .jhg-demo-card { border: 1px solid #dfe3e8; border-radius: 8px; display: block;
-                   overflow-x: auto; overflow-y: hidden; max-width: 100%; margin: 8px 0 20px; }
+                   overflow-x: auto; overflow-y: hidden; max-width: 100%; margin: 8px 0 20px;
+                   min-height: 360px; }
   .jhg-demo-status { font-size: 13px; color: #5b6472; margin: 0 0 8px; }
   .jhg-demo-bar { margin: 0 0 8px; }
   .jhg-demo-bar input { font-size: 13px; padding: 6px 10px; border: 1px solid #dfe3e8;

@@ -6,28 +6,26 @@ Renders millions of rows and columns with near-zero DOM overhead.
 **[▶ Try the live demo](https://jh-grid.github.io/JHGrid/docs/demo)**: 1,000,000-row scroll
 performance, editing, filtering, and frozen columns, running in your browser right now.
 
-![JH Grid screenshot](docs/images/jhgrid.png)
+[![JH Grid live demo: 1,000,000 rows scrolling smoothly](docs/images/live-demo.png)](https://jh-grid.github.io/JHGrid/docs/demo)
 
-> This repository distributes the **pre-built bundle** (`jhgrid.esm.js` / `jhgrid.js` /
-> `jhgrid.min.js`) plus its documentation, not the buildable source tree. See [`docs/`](docs/README.md)
-> for the full reference.
+![JH Grid screenshot](docs/images/jhgrid.png)
 
 ---
 
 ## Features
 
-- **Canvas rendering + 2D virtualization** — smooth at 60/120/144Hz, HiDPI-aware
-- **Large-data loading** — chunk-based async loading with prefetch & cache
-- **Frozen columns & scrollbars** — left/right freezing with draggable vertical/horizontal scrollbars
-- **Selection & row operations** — cell/range selection, single/multi row selection, row drag reorder
-- **Editing** — inline editing, validation, undo/redo, TSV copy & paste
-- **Rich cell types** — dropdown, multiselect, checkbox, date, richtext, image, button, plus custom editors/renderers
-- **Filtering & sorting** — set filter, quick filter, single-column sort
-- **CRUD & change tracking** — row/column add/delete with diff-based persistence
-- **Headers & styling** — multi-level headers, conditional row/cell styling
-- **State & export** — state snapshot/restore, CSV export, print preview
-- **i18n & accessibility** — KO/JA/ZH localization, ARIA, keyboard navigation, high-contrast support
-- **Zero dependencies & theming** — fully themeable with no runtime dependencies
+- **Canvas rendering + 2D virtualization** - smooth at 60/120/144Hz, HiDPI-aware
+- **Large-data loading** - chunk-based async loading with prefetch & cache
+- **Frozen columns & scrollbars** - left/right freezing with draggable vertical/horizontal scrollbars
+- **Selection & row operations** - cell/range selection, single/multi row selection, row drag reorder
+- **Editing** - inline editing, validation, undo/redo, TSV copy & paste
+- **Rich cell types** - dropdown, multiselect, checkbox, date, richtext, image, button, plus custom editors/renderers
+- **Filtering & sorting** - set filter, quick filter, single-column sort
+- **CRUD & change tracking** - row/column add/delete with diff-based persistence
+- **Headers & styling** - multi-level headers, conditional row/cell styling
+- **State & export** - state snapshot/restore, CSV export, print preview
+- **i18n & accessibility** - KO/JA/ZH localization, ARIA, keyboard navigation, high-contrast support
+- **Zero dependencies & theming** - fully themeable with no runtime dependencies
 
 ---
 
@@ -48,25 +46,27 @@ The package ships as **ES Modules only** and includes its own TypeScript declara
 modern Node ESM can consume it directly. CommonJS `require('@jh-grid/jhgrid-js')` is *not* supported; use a
 dynamic `await import('@jh-grid/jhgrid-js')` if you must load it from a CJS file.
 
-### Option B: Static ES module (no bundler)
+### Option B: ES Module (source as-is)
 
-`jhgrid.esm.js` is a single self-contained ES module file: deploy it as-is as a static resource
-(e.g. from a Spring Boot static resource path) and import it directly, no build step required:
+No build step or package manager: deploy the source as-is as a static resource and import it as
+an ES Module (e.g. from a Spring Boot static resource path).
 
 ```html
 <script type="module">
-  import { JHGrid } from '/static/jhgrid.esm.js';
+  import { JHGrid } from '/canvas-grid/index.js';
 </script>
 ```
 
 ### Option C: CDN (single bundled script)
 
-`jhgrid.min.js` is an IIFE build served straight from this repository via jsDelivr, no npm
-install required. Everything is exposed on a single global, `JHGrid` (the grid constructor is
+A pre-bundled IIFE build is generated with `npm run build` (`esbuild`, see
+`dist/jhgrid/dist/jhgrid.min.js`) and served straight from GitHub via jsDelivr, no npm publish
+required. Everything is exposed on a single global, `JHGrid` (the grid constructor is
 `JHGrid.JHGrid`):
 
 ```html
-<!-- pin an exact tag/commit for production; @latest always serves the latest commit on that branch -->
+<!-- pin an exact tag for production; @latest resolves to the newest git tag -->
+<!-- dist/jhgrid/'s contents are pushed as the repo root, so the CDN path is dist/jhgrid.min.js -->
 <script src="https://cdn.jsdelivr.net/gh/JH-Grid/JHGrid@latest/dist/jhgrid.min.js"></script>
 <script>
   const grid = new JHGrid.JHGrid({
@@ -75,6 +75,10 @@ install required. Everything is exposed on a single global, `JHGrid` (the grid c
   });
 </script>
 ```
+
+Run `npm run build` (minified, for CDN/production) or `npm run build:dev` (unminified, for
+debugging) after changing source files; the `dist/` output must be committed for jsDelivr to
+serve it.
 
 ---
 
@@ -149,14 +153,21 @@ const grid = new JHGrid({
 See [`fetchPage`](docs/api.md#fetchpage-single-callback-alternative) for a single-callback
 alternative to `fetchMeta`+`fetchData` when your backend already returns both together.
 
+The kitchen-sink demo exercises every column type, renderer, and callback at once:
+
+```bash
+node demo/server.mjs
+# open http://localhost:8123/
+```
+
 ---
 
 ## Documentation
 
 **[Browse the docs online](https://jh-grid.github.io/JHGrid/)**, or read them directly in
-[`docs/`](docs/README.md):
+[`docs/`](docs/README.md), since this README stays a quick landing page:
 
-- **[API Reference](docs/api.md)**: every constructor option, the data source interface, pagination, and all public methods
+- **[API Reference](docs/api.md)**: every constructor option, the data source interface, pagination, and all public methods (filtering, sorting, row/column CRUD, editors, export)
 - **[Theming](docs/theming.md)**: the full theme object, styling with your own CSS via `--jhg-*` custom properties, and canvas motion tuning
 - **[Interaction Reference](docs/interaction.md)**: every mouse and keyboard interaction
 - **[Spring Boot Integration](docs/integration.md)**: backend API shape and SQL pagination
