@@ -1,1 +1,3 @@
-dist/**/*.js linguist-generated=false linguist-detectable=true linguist-language=JavaScript
+# dist 폴더는 Linguist가 기본적으로 vendored(외부코드)+generated로 보고 통계에서 제외한다.
+# 아래 세 취소 속성으로 이를 되돌려 dist 안의 .js 를 JavaScript로 감지되게 한다.
+dist/**/*.js linguist-vendored=false linguist-generated=false linguist-detectable=true linguist-language=JavaScript
