@@ -29,7 +29,7 @@ performance, editing, filtering, and frozen columns, running in your browser rig
 
 ## Installation
 
-### Option A: npm (recommended for bundled apps)
+### Option A: npm
 
 ```bash
 npm install @jh-grid/jhgrid-js
@@ -44,27 +44,24 @@ The package ships as **ES Modules only** and includes its own TypeScript declara
 modern Node ESM can consume it directly. CommonJS `require('@jh-grid/jhgrid-js')` is *not* supported; use a
 dynamic `await import('@jh-grid/jhgrid-js')` if you must load it from a CJS file.
 
-### Option B: ES Module (source as-is)
+### Option B: ES Module
 
-No build step or package manager: deploy the source as-is as a static resource and import it as
-an ES Module (e.g. from a Spring Boot static resource path).
+No build step or package manager: copy `dist/jhgrid.esm.js` to a static resource path of your own
+(e.g. a Spring Boot static resource folder) and import it as an ES Module.
 
 ```html
 <script type="module">
-  import { JHGrid } from '/canvas-grid/index.js';
+  import { JHGrid } from '/static/jhgrid.esm.js';
 </script>
 ```
 
-### Option C: CDN (single bundled script)
+### Option C: CDN
 
-A pre-bundled IIFE build is generated with `npm run build` (`esbuild`, see
-`dist/jhgrid/dist/jhgrid.min.js`) and served straight from GitHub via jsDelivr, no npm publish
-required. Everything is exposed on a single global, `JHGrid` (the grid constructor is
-`JHGrid.JHGrid`):
+A pre-bundled IIFE build is served straight from GitHub via jsDelivr, no npm required.
+Everything is exposed on a single global, `JHGrid` (the grid constructor is `JHGrid.JHGrid`):
 
 ```html
 <!-- pin an exact tag for production; @latest resolves to the newest git tag -->
-<!-- dist/jhgrid/'s contents are pushed as the repo root, so the CDN path is dist/jhgrid.min.js -->
 <script src="https://cdn.jsdelivr.net/gh/JH-Grid/JHGrid@latest/dist/jhgrid.min.js"></script>
 <script>
   const grid = new JHGrid.JHGrid({
@@ -73,10 +70,6 @@ required. Everything is exposed on a single global, `JHGrid` (the grid construct
   });
 </script>
 ```
-
-Run `npm run build` (minified, for CDN/production) or `npm run build:dev` (unminified, for
-debugging) after changing source files; the `dist/` output must be committed for jsDelivr to
-serve it.
 
 ---
 
@@ -170,14 +163,14 @@ node demo/server.mjs
 - **[Interaction Reference](docs/interaction.md)**: every mouse and keyboard interaction
 - **[Spring Boot Integration](docs/integration.md)**: backend API shape and SQL pagination
 - **[Architecture](docs/architecture.md)**: internal structure and the virtual rendering flow
-- **[Browser Support](docs/browser-support.md)**: minimum versions and what sets them
+- **[Browser Support](docs/browser-support.md)**: minimum supported versions
 
 ---
 
 ## Browser Support
 
-Chrome/Edge 92+, Firefox 90+, Safari 15.4+: no IE, no legacy Edge, no transpilation or polyfills.
-See [docs/browser-support.md](docs/browser-support.md) for exactly what sets that floor.
+Chrome/Edge 99+, Firefox 112+, Safari 15.4+: no IE, no legacy Edge, no transpilation or polyfills.
+See [docs/browser-support.md](docs/browser-support.md) for details.
 
 ---
 

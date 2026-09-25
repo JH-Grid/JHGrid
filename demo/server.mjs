@@ -89,11 +89,10 @@ const server = createServer(async (req, res) => {
     return;
   }
 
-  // Must redirect, not serve directly - if demo/index.html were returned straight from /, the
-  // browser's base URL stays / and the page's own ./app.js resolves to /app.js instead of
-  // /demo/app.js.
+  // Send root to the demo page. Redirect rather than serve it straight from / so the browser's
+  // base URL becomes /demo/ and any relative asset the page references resolves under /demo/.
   if (path === '/') {
-    res.writeHead(302, { Location: '/demo/index.html' });
+    res.writeHead(302, { Location: '/demo/demo.html' });
     res.end();
     return;
   }
@@ -117,4 +116,4 @@ const server = createServer(async (req, res) => {
   }
 });
 
-server.listen(8123, () => console.log('demo server on http://localhost:8123 (root: ' + ROOT + ')'));
+server.listen(8123, () => console.log('demo server on http://localhost:8123/demo/demo.html (root: ' + ROOT + ')'));

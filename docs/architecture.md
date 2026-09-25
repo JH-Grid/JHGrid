@@ -38,8 +38,8 @@ focused elements; a canvas cannot fake any of them. So an edit session mounts re
 cell, and JHGrid keeps exactly one alive at a time — `_editing` is a single slot, and starting
 another edit, scrolling the grid, or mousing down anywhere commits the previous one first.
 
-That bound is what makes the exception safe, and it is the reason the editor surfaces in
-`core/EditorSurface.js` are attached to the *editor* context and to nothing else:
+That bound is what makes the exception safe, and it is the reason the editor surfaces
+are attached to the *editor* context and to nothing else:
 
 ```
 JHGrid._buildEditorCtx(row, col)
@@ -74,4 +74,4 @@ render surface) rather than for everyday app code; most consumers never need the
   header draw uses internally, exposed so a custom exporter (e.g. one writing to a spreadsheet
   format) can reproduce identical multi-level header spans instead of re-deriving them.
 
-See `index.d.ts` for their exact signatures.
+See the bundled TypeScript declarations (`index.d.ts`) for their exact signatures.
