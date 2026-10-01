@@ -1,7 +1,6 @@
 # JH Grid
 
-High-performance Canvas-based data grid with smooth 2D virtualization.  
-Renders millions of rows and columns with near-zero DOM overhead.
+Canvas-based data grid with 2D virtualization, built-in editing, filtering and undo/redo, and zero runtime dependencies.
 
 **[▶ Try the live demo](https://jh-grid.github.io/JHGrid/docs/demo)**: 1,000,000-row scroll
 performance, editing, filtering, and frozen columns, running in your browser right now.
@@ -13,17 +12,50 @@ performance, editing, filtering, and frozen columns, running in your browser rig
 ## Features
 
 - **Canvas rendering + 2D virtualization** - smooth at 60/120/144Hz, HiDPI-aware
+- **Sizes itself to its container** - fills the element it is given and follows it as the page reflows, or takes a fixed `width`/`height` instead
 - **Large-data loading** - chunk-based async loading with prefetch & cache
-- **Frozen columns & scrollbars** - left/right freezing with draggable vertical/horizontal scrollbars
+- **Frozen columns, pinned rows & scrollbars** - left/right column freezing, top/bottom pinned rows (totals), draggable vertical/horizontal scrollbars
+- **Pagination** - continuous scrolling or classic pages, with an optional page-size selector
 - **Selection & row operations** - cell/range selection, single/multi row selection, row drag reorder
-- **Editing** - inline editing, validation, undo/redo, TSV copy & paste
+- **Editing** - inline editing, validation, undo/redo, TSV copy & paste, fill handle
 - **Rich cell types** - dropdown, multiselect, checkbox, date, richtext, image, button, plus custom editors/renderers
-- **Filtering & sorting** - set filter, quick filter, single-column sort
+- **Filtering & sorting** - set filter, tag filter for huge columns, quick filter, single-column sort
 - **CRUD & change tracking** - row/column add/delete with diff-based persistence
-- **Headers & styling** - multi-level headers, conditional row/cell styling
+- **Headers & styling** - multi-level headers, conditional row/cell styling, context menus you can narrow or extend
 - **State & export** - state snapshot/restore, CSV export, print preview
-- **i18n & accessibility** - KO/JA/ZH localization, ARIA, keyboard navigation, high-contrast support
+- **i18n & accessibility** - KO/JA/ZH localization, ARIA, keyboard navigation with remappable shortcuts, high-contrast support
 - **Zero dependencies & theming** - fully themeable with no runtime dependencies
+
+---
+
+## Benchmarks
+
+1,000,000 rows x 15 columns, 2 runs, the slower of the two. Every grid on its documented default
+configuration, with no large-data tuning options. Windows 11, i7-12700H, 32GB, headless Chromium
+153. Timed from the API call to each grid's own "done" signal plus two painted frames.
+
+| | **JH Grid 0.3.0** | Grid A | Grid B | Grid C |
+|---|---:|---:|---:|---:|
+| Create grid, first paint | **47ms** | 719ms | 404ms | 160ms |
+| Sort text, many repeats | **366ms** | 2.80s | 6.57s | 1.38s |
+| Sort text, mostly unique | **867ms** | 3.47s | 4.87s | 1.95s |
+| Sort number | **433ms** | 1.75s | 1.85s | 641ms |
+| Filter one value | **51ms** | 267ms | 100ms | not measured |
+| Filter, then sort inside it | **381ms** | 1.38s | 1.25s | not measured |
+| JS heap after load | **391MB** | 859MB | 777MB | 424MB |
+
+Two cases go the other way. Sorting text that is *already* in order (a sequential `ORD-...` key)
+takes 450ms against Grid A's 186ms - Grid A's default comparator skips locale- and numeric-aware
+comparison, so it is doing less work rather than the same work faster. Quick search across every
+column takes 934ms against Grid B's 751ms; Grid B has no built-in quick search, so that
+figure is a filter function scanning all fields, not the same feature.
+
+Grid C's filter rows are blank because its `filter` property stops taking effect once its
+custom element has been created and removed on the same page, which is what this benchmark
+does between runs; no public API worked around it, so those numbers were not collected.
+
+Scrolling is not a differentiator: all four grids hold a 16.7-16.8ms p95 frame time with zero
+frames over 50ms, at every row count tested.
 
 ---
 
@@ -81,15 +113,15 @@ Pass an array you already have (an API response, a small/medium table) straight 
 no fetch functions needed:
 
 ```html
-<div id="my-grid"></div>
+<!-- With no width/height the grid fills this element and follows it as the page reflows,
+     so give the container a size. Pass width/height instead for a fixed size. -->
+<div id="my-grid" style="width: 100%; height: 700px"></div>
 
 <script type="module">
 import { JHGrid } from '@jh-grid/jhgrid-js';
 
 const grid = new JHGrid({
   container: '#my-grid',
-  width:     1200,
-  height:    700,
 
   data: [
     { name: 'Alice', age: 30, city: 'Seoul' },
@@ -109,7 +141,8 @@ const grid = new JHGrid({
 ```
 
 See [Local Array Data](docs/api.md#local-array-data-data) for how filtering/sorting/`refresh()`
-behave against a plain array.
+behave against a plain array, and [Responsive Sizing](docs/api.md#responsive-sizing-responsive) for
+sizing to the container versus a fixed `width`/`height`.
 
 ### Server-paginated data
 
@@ -117,15 +150,13 @@ For a large dataset that shouldn't be loaded into memory all at once, fetch it p
 instead:
 
 ```html
-<div id="my-grid"></div>
+<div id="my-grid" style="width: 100%; height: 700px"></div>
 
 <script type="module">
 import { JHGrid } from '@jh-grid/jhgrid-js';
 
 const grid = new JHGrid({
   container: '#my-grid',
-  width:     1200,
-  height:    700,
   editableCols: '*',
 
   fetchMeta: async () => {
@@ -144,7 +175,8 @@ const grid = new JHGrid({
 See [`fetchPage`](docs/api.md#fetchpage-single-callback-alternative) for a single-callback
 alternative to `fetchMeta`+`fetchData` when your backend already returns both together.
 
-The kitchen-sink demo exercises every column type, renderer, and callback at once:
+A local copy of four of the grids on [`docs/demo.md`](docs/demo.md) — 1,000,000 rows, editing,
+filtering, and frozen columns — runs from this repo without hitting the CDN:
 
 ```bash
 node demo/server.mjs
@@ -158,10 +190,11 @@ node demo/server.mjs
 **[Browse the docs online](https://jh-grid.github.io/JHGrid/)**, or read them directly in
 [`docs/`](docs/README.md), since this README stays a quick landing page:
 
-- **[API Reference](docs/api.md)**: every constructor option, the data source interface, pagination, and all public methods (filtering, sorting, row/column CRUD, editors, export)
+- **[Getting Started](docs/getting-started.md)**: what a grid needs, the decisions to make up front, React/Vue/Angular setup, and a troubleshooting table
+- **[API Reference](docs/api.md)**: every constructor option, the data source interface, column types and editors, validation, pagination, all public methods (filtering, sorting, row/column CRUD, pinned rows, context menus, export) and the text reference for translating the grid
 - **[Theming](docs/theming.md)**: the full theme object, styling with your own CSS via `--jhg-*` custom properties, and canvas motion tuning
-- **[Interaction Reference](docs/interaction.md)**: every mouse and keyboard interaction
-- **[Spring Boot Integration](docs/integration.md)**: backend API shape and SQL pagination
+- **[Interaction Reference](docs/interaction.md)**: every mouse and keyboard interaction, including copy, paste and the fill handle
+- **[Spring Boot Integration](docs/integration.md)**: backend API shape, SQL paging, sorting and filtering, saving edits
 - **[Architecture](docs/architecture.md)**: internal structure and the virtual rendering flow
 - **[Browser Support](docs/browser-support.md)**: minimum supported versions
 

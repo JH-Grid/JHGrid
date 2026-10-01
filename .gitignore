@@ -1,0 +1,6 @@
+# Local Jekyll preview only (see _config.local.yml) - GitHub Pages builds
+# this site itself via remote_theme, none of this is needed there.
+/Gemfile
+/Gemfile.lock
+/_config.local.yml
+/_site/

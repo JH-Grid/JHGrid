@@ -1,0 +1,134 @@
+// Site-level override for the just-the-docs theme's table styling: drop the
+// faint vertical divider between columns, keep only the horizontal row rule.
+th,
+td {
+  border-left: 0;
+}
+
+// The theme's default content column caps at 50rem and grows the sidebar to
+// fill whatever's left on wide screens. We want the opposite: a fixed,
+// narrow sidebar and a content column that uses the available width.
+@media (min-width: 50rem) {
+  .main {
+    max-width: none;
+  }
+}
+@media (min-width: 66.5rem) {
+  .side-bar {
+    width: 16.5rem;
+  }
+  .side-bar + .main {
+    margin-left: 16.5rem;
+  }
+}
+
+// Right-hand "On this page" TOC (see _includes/components/toc.html and the _layouts/default.html
+// override that places it). Hidden below $media-queries.xl (87.5rem) since below that width there
+// isn't room for a third column without squeezing the already-widened main content back down.
+.toc-sidebar {
+  display: none;
+}
+@media (min-width: 87.5rem) {
+  .main {
+    margin-right: 16rem;
+  }
+  .toc-sidebar {
+    position: fixed;
+    top: $header-height;
+    right: 0;
+    display: block;
+    width: 16rem;
+    height: calc(100% - #{$header-height});
+    padding: $sp-6 $sp-5 $sp-5 $sp-4;
+    overflow-y: auto;
+    border-left: $border $border-color;
+  }
+}
+.toc-sidebar-title {
+  margin-bottom: $sp-3;
+  font-size: $font-size-2;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: $grey-dk-000;
+}
+.toc-list {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  border-left: $border $border-color;
+}
+.toc-item {
+  margin: 0;
+}
+.toc-link {
+  display: block;
+  padding: $sp-1 $sp-3;
+  margin-left: -1px;
+  font-size: $font-size-3;
+  line-height: 1.5;
+  color: $body-text-color;
+  border-left: 2px solid transparent;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.toc-link:hover {
+  color: $link-color;
+}
+.toc-link.active {
+  font-weight: 600;
+  color: $link-color;
+  border-left-color: $link-color;
+}
+.toc-level-h3 .toc-link,
+.toc-level-h4 .toc-link,
+.toc-level-h5 .toc-link,
+.toc-level-h6 .toc-link {
+  padding-left: $sp-5;
+}
+
+// h2 sections render as a collapsible group: a chevron toggle plus a bold link on one row, an
+// indented child list (h3+) below it that's hidden until the group is expanded.
+.toc-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.toc-group > .toc-link {
+  flex: 1 1 auto;
+  font-weight: 600;
+}
+.toc-group-toggle {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: $sp-4;
+  height: $sp-4;
+  padding: 0;
+  margin-left: $sp-2;
+  color: $grey-dk-000;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.toc-group-toggle svg {
+  width: 0.7rem;
+  height: 0.7rem;
+  transition: transform 120ms ease;
+}
+.toc-group.expanded > .toc-group-toggle svg {
+  transform: rotate(90deg);
+}
+.toc-children {
+  flex: 1 0 100%;
+  display: none;
+  padding: 0;
+  margin: 0 0 $sp-2 $sp-4;
+  list-style: none;
+  border-left: $border $border-color;
+}
+.toc-group.expanded > .toc-children {
+  display: block;
+}

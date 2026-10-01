@@ -27,6 +27,35 @@ const grid = new JHGrid({
 
 ![Grid re-themed with dark canvas tokens](images/theme-dark.png)
 
+A fuller dark theme. The canvas tokens colour the grid itself and the `overlay*` tokens colour the
+filter panel, menus, dialogs and editors, so a dark grid usually sets both. Everything not listed keeps
+its default:
+
+```js
+const darkTheme = {
+  // the grid
+  headerBg: '#1f2937', headerText: '#e5e7eb', headerBorder: '#374151',
+  rowEven: '#111827', rowOdd: '#0f172a', cellBorder: '#1f2937', cellText: '#e5e7eb',
+  loadingText: '#6b7280', skeletonBar: '#1f2937', skeletonSheen: 'rgba(255,255,255,0.06)',
+  selectionColor: '#60a5fa', selectionFill: 'rgba(96,165,250,0.15)', selRowBg: 'rgba(96,165,250,0.18)',
+  hoverRowBg: 'rgba(255,255,255,0.055)',            // a light wash: the default is dark
+  scrollbarBg: '#111827', scrollbarThumb: '#4b5563', frozenBorder: '#4b5563',
+  readonlyCellBg: '#1e293b',
+  // panels, menus, dialogs, editors
+  overlayBg: '#1f2937', overlayBorder: '#374151', overlayHeaderBg: '#111827', overlayDivider: '#374151',
+  overlayText: '#f9fafb', overlayMutedText: '#9ca3af', overlayHintText: '#6b7280',
+  overlayHoverBg: '#374151', overlayItemHoverBg: '#374151',
+  overlayAccentText: '#0b1220',                    // text on the light-blue Apply button
+  pagerBg: '#111827', pagerText: '#e5e7eb', pagerBorder: '#374151',
+  pagerButtonBg: '#1f2937', pagerButtonBorder: '#4b5563',
+};
+
+new JHGrid({ container: '#grid', data: rows, theme: darkTheme });
+```
+
+`theme` is read when the grid is created. To switch themes at runtime, `destroy()` the grid and build
+a new one with the other object (the [live demo](demo.md#themes) does exactly that).
+
 ## Full Theme Reference
 
 ### Canvas tokens
@@ -57,6 +86,7 @@ canvas; see the note under the table below.
 | `frozenBorder` | `#B0B0B0` | Separator line between frozen and scrollable columns |
 | `scrollbarBg` | `#F0F0F0` | Scrollbar track background |
 | `scrollbarThumb` | `#C0C0C0` | Scrollbar thumb color |
+| `scrollbarArrow` | `#6B6B6B` | Glyph color for the step-arrow buttons at each end of a scrollbar track |
 | `scrollbarRadius` | `4` | Scrollbar thumb border radius (px) |
 | `filterIconBg` | `rgba(245,158,11,0.18)` | Background of the filter icon on a header with an active filter |
 | `filterIconColor` | `#C87B00` | Filter icon color |
@@ -124,7 +154,9 @@ them; those are configured through `theme` above. Everything *around* the grid i
 can be styled directly.
 
 Each DOM surface carries a stable class, and the `theme` object is mirrored onto `--jhg-*` custom
-properties scoped to the grid. Overriding a variable in your own CSS wins over the built-in value:
+properties scoped to the grid. The floating surfaces (`.jhg-panel`, `.jhg-menu`, `.jhg-dialog`) are drawn directly
+under `<body>`, outside the grid's own element, so a container that clips its contents cannot cut them off; select them by
+their own class rather than through your grid container. They carry `.jhg-root`, so the variable overrides below reach them. Overriding a variable in your own CSS wins over the built-in value:
 
 ```css
 .jhg-root, .jhg-pager {
@@ -145,6 +177,8 @@ properties scoped to the grid. Overriding a variable in your own CSS wins over t
 | `.jhg-btn` | Buttons inside overlays |
 | `.jhg-pager` / `.jhg-pager-btn` | Pagination bar and its buttons |
 | `.jhg-editor` | Cell editors and the filter search input |
+| `.jhg-chip` / `.jhg-chip-contains` | The picked-value chips of the tag filter, and its "contains" chip |
+| `.jhg-tree-group` / `.jhg-tree-toggle` | A group row of the column visibility dialog, and its expand arrow |
 | `.jhg-loading` / `.jhg-empty` / `.jhg-tooltip` | Loading overlay, empty state, cell tooltip |
 
 These strings are also exported as `GRID_CLASSES`, for code that wants to target a surface without
@@ -161,6 +195,13 @@ under `prefers-reduced-motion: reduce`. Retime it globally without rewriting rul
 
 ```css
 .jhg-root { --jhg-motion-fast: 90ms; --jhg-motion-slow: 120ms; }
+```
+
+The keyboard focus ring drawn around focused buttons, inputs and pager controls follows the accent
+colour (`selectionColor`). Give it a colour of its own with `--jhg-focus-ring`:
+
+```css
+.jhg-root, .jhg-pager { --jhg-focus-ring: #f59e0b; }
 ```
 
 Only motion and focus rules live in the injected stylesheet (one `<style id="jhgrid-styles">` per

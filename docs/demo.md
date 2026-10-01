@@ -7,11 +7,12 @@ nav_order: 3
 
 [← Docs index](README.md)
 
-Seven small grids, each isolating one thing: raw scroll performance at 1,000,000 rows, inline
-editing, filtering, frozen columns, row selection, column types/renderers, and theming. Every grid
-on this page is a real `JHGrid` instance loaded straight from the
-[jsDelivr CDN build](../README.md#option-c-cdn-single-bundled-script); view source on this page to
-see the exact code.
+Eight small grids, each isolating one thing: raw scroll performance at 1,000,000 rows, inline
+editing, filtering, frozen columns, pinned rows, row selection, column types/renderers, and theming. Every grid
+on this page is a real `JHGrid` instance, loaded on the published site from the
+[jsDelivr CDN build](../README.md#option-c-cdn); view source on this page to
+see the exact code. The snippets under each heading are the options that section is about — the
+page's own script has the whole thing.
 
 <div id="jhg-demo-boot-error" style="display:none;background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;
      padding:10px 12px;border-radius:8px;margin:12px 0;font:12px/1.6 ui-monospace,Menlo,monospace;
@@ -24,14 +25,48 @@ don't exist in the DOM. Drag the scrollbar to jump around; nothing gets slower t
 go.
 
 <p id="jhg-demo-perf-status" class="jhg-demo-status">Booting…</p>
-<div class="jhg-demo-card" id="jhg-demo-perf" style="width:760px"></div>
+<div class="jhg-demo-card" id="jhg-demo-perf" ></div>
+
+Nothing about the grid changes at this row count — it asks for one page of rows at a time and
+throws away the pages it has scrolled past:
+
+```js
+new JHGrid({
+  container: '#grid',
+  columnDefs: [{ field: 'id', label: 'ID', width: 60, align: 'right' }, /* … */],
+  fetchMeta: async () => ({ totalRows: 1_000_000, columns: ['id', 'name', 'email'] }),
+  fetchData: async (page, size) => ({ rows: ROWS.slice(page * size, page * size + size) }),
+});
+```
+
+Point `fetchData` at your API instead of an array and the row count stops mattering at all — see
+[`fetchMeta`](api.md#fetchmeta) and [`fetchData`](api.md#fetchdata).
 
 ## Editing
 
 Double-click a cell to edit it. `Ctrl+Z` / `Ctrl+Y` undo and redo; `Ctrl+C` / `Ctrl+V` copy and
 paste a range.
 
-<div class="jhg-demo-card" id="jhg-demo-edit" style="width:650px"></div>
+<div class="jhg-demo-card" id="jhg-demo-edit" ></div>
+
+`editableCols` decides what can be edited — `'*'` for every column, or a list of fields. `type`
+picks the editor, and `validation` rejects a bad value with a red border and a message:
+
+```js
+new JHGrid({
+  container: '#grid',
+  data: rows,
+  editableCols: '*',
+  columnDefs: [
+    { field: 'name',   label: 'Name',   width: 150, validation: { required: true, minLength: 2 } },
+    { field: 'dept',   label: 'Dept',   width: 140, type: 'dropdown', options: DEPTS },
+    { field: 'active', label: 'Active', width: 90,  type: 'checkbox' },
+  ],
+});
+```
+
+See [Validation](api.md#validation-columndefsvalidation) and
+[Editor Options](api.md#editor-options-columndefseditoroptions).
 
 ## Filtering
 
@@ -42,14 +77,84 @@ panel.
 <div class="jhg-demo-bar">
   <input type="text" id="jhg-demo-filter-input" placeholder="Quick filter…">
 </div>
-<div class="jhg-demo-card" id="jhg-demo-filter" style="width:520px"></div>
+<div class="jhg-demo-card" id="jhg-demo-filter"></div>
+
+The per-column panel needs no wiring; the box above is one call against your own input:
+
+```js
+const grid = new JHGrid({ container: '#grid', data: rows, columnDefs });
+
+document.querySelector('#quick-filter').addEventListener('input', (e) => {
+  grid.setQuickFilter(e.target.value);
+});
+```
+
+See [Set Filter / Quick Filter](api.md#set-filter--quick-filter) and
+[`setFilter` / `setSort`](api.md#field-based-filter--sort-setfilter--setsort) for filtering from code.
 
 ## Frozen columns
 
 `frozenCols` / `frozenColsRight` pin columns to either edge. Scroll right: **Name** and **Dept**
 stay put on the left, **Score** stays put on the right.
 
-<div class="jhg-demo-card" id="jhg-demo-frozen" style="width:620px"></div>
+<div class="jhg-demo-card" id="jhg-demo-frozen"></div>
+
+Both are counts, not field names: the first `frozenCols` columns and the last `frozenColsRight`
+columns of `columnDefs` are the ones that stay put.
+
+```js
+new JHGrid({
+  container: '#grid',
+  data: rows,
+  frozenCols: 2,        // Name, Dept stay at the left edge
+  frozenColsRight: 1,   // Score stays at the right edge
+  columnDefs: [
+    { field: 'name', label: 'Name', width: 130 },
+    { field: 'dept', label: 'Dept', width: 130 },
+    /* … */
+    { field: 'score', label: 'Score', width: 90, align: 'right' },
+  ],
+});
+```
+
+Users can also freeze a column from its header menu — see
+[Frozen Columns](api.md#frozen-columns-frozencols--frozencolsright).
+
+## Pinned rows
+
+`pinnedBottomRows` keeps a row fixed at the bottom of the grid, detached from scroll/sort/filter —
+the classic use case is a totals row. Scroll or click a column header to sort; the total row never
+moves and is never affected. `rowPinButton` draws a pin at the right edge of the row-number gutter
+— hover a row to see it, click to pin a copy to the top. The button below does the same thing from
+code with `pinRow()`, for when the pin should be triggered some other way. Either way it becomes
+its own independent copy, so editing it afterward doesn't touch the original row.
+
+<div class="jhg-demo-bar">
+  <button type="button" id="jhg-demo-pin-btn">Pin selected row to top</button>
+</div>
+<div class="jhg-demo-card" id="jhg-demo-pinned" ></div>
+
+A pinned row is a plain object, so a totals row is whatever you compute from the data you already
+have — the grid never sums anything on its own:
+
+```js
+const grid = new JHGrid({
+  container: '#grid',
+  data: rows,
+  rowPinButton: true,   // the pin in the row-number gutter
+  columnDefs,
+  pinnedBottomRows: [{
+    name:   `Total (${rows.length})`,
+    salary: rows.reduce((sum, r) => sum + r.salary, 0),
+  }],
+});
+
+// Same thing from code, on a row the user has selected:
+const [row] = grid.getSelectedRows();
+if (row != null) grid.pinRow(row, 'top');
+```
+
+See [Pinned Rows](api.md#pinned-rows-pinnedtoprows--pinnedbottomrows--pinrow).
 
 ## Row selection
 
@@ -58,15 +163,53 @@ to extend a selection, the same as a spreadsheet). `onRowSelect(rows)` fires wit
 indices on every change; `getSelectedRows()` reads them back at any time.
 
 <p id="jhg-demo-selection-status" class="jhg-demo-status">0 selected</p>
-<div class="jhg-demo-card" id="jhg-demo-selection" style="width:520px"></div>
+<div class="jhg-demo-card" id="jhg-demo-selection"></div>
+
+```js
+const grid = new JHGrid({
+  container: '#grid',
+  data: rows,
+  showRowNumbers: true,     // the gutter the click lands in
+  rowSelection: 'multi',    // or 'single', or 'none' (the default)
+  columnDefs,
+  onRowSelect: (rows) => {
+    document.querySelector('#count').textContent = `${rows.length} selected`;
+  },
+});
+
+grid.getSelectedRows();      // [3, 4, 7] - row indices, in ascending order
+```
+
+For the other pattern — a checkbox column with a tick-everything box in its header — see
+[Row Selection / Header Checkbox](api.md#row-selection-rowselection--header-checkbox).
 
 ## Column types & renderers
 
 `columnDefs[i].type` picks a built-in editor/renderer pair (`dropdown`, `checkbox`, `date`, ...);
-`renderer` swaps in a different [`CellRenderers`](api.md#cellrenderers) entry without changing the
+`renderer` swaps in a different [`CellRenderers`](api.md#built-in-cell-renderers-cellrenderers) entry without changing the
 editor, e.g. formatting a plain number as currency.
 
-<div class="jhg-demo-card" id="jhg-demo-types" style="width:560px"></div>
+<div class="jhg-demo-card" id="jhg-demo-types"></div>
+
+```js
+new JHGrid({
+  container: '#grid',
+  data: rows,
+  editableCols: '*',
+  columnDefs: [
+    { field: 'dept',   label: 'Dept',   width: 150, type: 'dropdown', options: DEPTS },
+    { field: 'active', label: 'Active', width: 90,  type: 'checkbox' },
+    { field: 'joined', label: 'Joined', width: 130, type: 'date', format: 'YYYY-MM-DD' },
+    { field: 'salary', label: 'Salary', width: 140, align: 'right',
+      renderer: CellRenderers.currency({ locale: 'en-US', currency: 'USD' }) },
+  ],
+});
+```
+
+Thirteen renderers ship built in (`progressBar`, `badge`, `checkmark`, `link`, `image`, …) and
+`registerCellRenderer()` adds your own — see
+[Built-in Cell Renderers](api.md#built-in-cell-renderers-cellrenderers) and
+[Column Types](api.md#column-types-date--richtext--image-and-custom-editorsrenderers).
 
 ## Themes
 
@@ -80,10 +223,45 @@ the select below `destroy()`s the current instance and constructs a new one with
     <option value="dark">Dark</option>
   </select>
 </div>
-<div class="jhg-demo-card" id="jhg-demo-theme" style="width:560px"></div>
+<div class="jhg-demo-card" id="jhg-demo-theme" ></div>
+
+`theme` is a partial override: name only the tokens you want to change and the rest keep their
+defaults.
+
+```js
+const DARK = {
+  headerBg: '#111827', headerText: '#e5e7eb', headerBorder: '#374151',
+  rowEven: '#1f2937', rowOdd: '#111827', cellText: '#f9fafb', cellBorder: '#374151',
+  selectionColor: '#60a5fa', selectionFill: 'rgba(96,165,250,0.18)',
+  selRowBg: 'rgba(96,165,250,0.14)', scrollbarBg: '#111827', scrollbarThumb: '#4b5563',
+  frozenBorder: '#4b5563',
+  // The default hover wash is a black tint - invisible over dark rows.
+  hoverRowBg: 'rgba(255,255,255,0.055)',
+};
+
+let grid = null;
+function build(dark) {
+  grid?.destroy();
+  grid = new JHGrid({
+    container: '#grid',
+    data: rows,
+    editableCols: '*',    // otherwise every column gets the light readonlyCellBg tint
+    theme: dark ? DARK : undefined,
+    columnDefs,
+  });
+}
+build(false);
+```
+
+All 58 tokens are listed in [Themes](theming.md), which also covers the CSS variables the
+non-canvas parts (menus, panels, the pager) read.
 
 <style>
-  .jhg-demo-card { border: 1px solid #dfe3e8; border-radius: 8px; display: block;
+  /* No border-radius here: the grid draws right to its own edges (scrollbar arrows included), and
+     rounding this container's corners while it clips overflow (needed for the horizontal scrollbar)
+     cuts a small notch out of the canvas's own corners - most visible bottom-right, where a vertical
+     scrollbar's down-arrow sits right at the corner. */
+  .jhg-demo-card { border: 1px solid #dfe3e8; display: block;
                    overflow-x: auto; overflow-y: hidden; max-width: 100%; margin: 8px 0 20px;
                    min-height: 360px; }
   .jhg-demo-status { font-size: 13px; color: #5b6472; margin: 0 0 8px; }
@@ -92,6 +270,9 @@ the select below `destroy()`s the current instance and constructs a new one with
                          border-radius: 6px; min-width: 220px; }
   .jhg-demo-bar select { font-size: 13px; padding: 6px 10px; border: 1px solid #dfe3e8;
                           border-radius: 6px; }
+  .jhg-demo-bar button { font-size: 13px; padding: 6px 12px; border: 1px solid #dfe3e8;
+                          border-radius: 6px; background: #fff; cursor: pointer; }
+  .jhg-demo-bar button:hover { background: #f5f7fa; }
 </style>
 
 <script>
@@ -106,12 +287,17 @@ the select below `destroy()`s the current instance and constructs a new one with
     jhgDemoBootError('[unhandled rejection] ' + (e.reason?.message || e.reason) + '\n' + (e.reason?.stack || '')));
 </script>
 <script type="module">
-  /* @latest resolves to the newest git tag; pin an exact tag instead for production.
-     Dynamic import, not a static `import ... from` declaration -- some browsers never fetch a
+  /* Dynamic import, not a static `import ... from` declaration -- some browsers never fetch a
      static import inside an inline module script on this page, leaving it stuck on "Booting…"
-     with no error at all. A dynamic import resolves reliably instead. */
-  const { JHGrid, CellRenderers } = await import('https://cdn.jsdelivr.net/gh/JH-Grid/JHGrid@latest/dist/jhgrid.esm.js');
+     with no error at all. A dynamic import resolves reliably instead.
 
+     `/dist/` is only served by a local `jekyll serve`: the published site excludes dist/, which
+     jsDelivr reads straight from the git tree instead. So a local preview checks this page against
+     the bundle just built, and the published page falls through to the CDN. @latest resolves to the
+     newest git tag; pin an exact tag instead if you copy this into a page of your own. */
+  const CDN = 'https://cdn.jsdelivr.net/gh/JH-Grid/JHGrid@latest/dist/jhgrid.esm.js';
+  const { JHGrid, CellRenderers } =
+    await import('/dist/jhgrid.esm.js').catch(() => import(CDN));
   const DEPTS  = ['Engineering', 'Sales', 'Marketing', 'Support', 'Design'];
   const GRADES = ['A', 'B', 'C', 'D'];
 
@@ -139,20 +325,20 @@ the select below `destroy()`s the current instance and constructs a new one with
 
   const perfGrid = new JHGrid({
     container: '#jhg-demo-perf',
-    width: 760, height: 360,
+    width: 820, height: 360,
     editableCols: '*',
     showRowNumbers: true,
     rowSelection: 'multi',
     frozenCols: 1,
     columnDefs: [
-      { field: 'id',     label: 'ID',    width: 70,  align: 'right', group: 'Basic Info', renderer: CellRenderers.number() },
-      { field: 'name',   label: 'Name',  width: 140, group: 'Basic Info' },
-      { field: 'email',  label: 'Email', width: 220, group: 'Basic Info' },
-      { field: 'dept',   label: 'Dept',  width: 130, group: 'Attributes', type: 'dropdown', options: DEPTS },
-      { field: 'grade',  label: 'Grade', width: 92,  group: 'Attributes' },
-      { field: 'active', label: 'Active', width: 90, group: 'Attributes', type: 'checkbox' },
-      { field: 'salary', label: 'Salary', width: 130, align: 'right', group: 'Performance', renderer: CellRenderers.currency({ locale: 'en-US', currency: 'USD' }) },
-      { field: 'score',  label: 'Score', width: 90,  align: 'right', group: 'Performance' },
+      { field: 'id',     label: 'ID',    width: 60,  align: 'right', group: 'Basic Info', renderer: CellRenderers.number() },
+      { field: 'name',   label: 'Name',  width: 110, group: 'Basic Info' },
+      { field: 'email',  label: 'Email', width: 150, group: 'Basic Info' },
+      { field: 'dept',   label: 'Dept',  width: 100, group: 'Attributes', type: 'dropdown', options: DEPTS },
+      { field: 'grade',  label: 'Grade', width: 90,  group: 'Attributes' },
+      { field: 'active', label: 'Active', width: 85, group: 'Attributes', type: 'checkbox' },
+      { field: 'salary', label: 'Salary', width: 100, align: 'right', group: 'Performance', renderer: CellRenderers.currency({ locale: 'en-US', currency: 'USD' }) },
+      { field: 'score',  label: 'Score', width: 70,  align: 'right', group: 'Performance' },
     ],
     fetchMeta: async () => ({ totalRows: PERF_ROWS.length, columns: ['id', 'name', 'email', 'dept', 'grade', 'active', 'salary', 'score'] }),
     fetchData: async (page, size) => ({ rows: PERF_ROWS.slice(page * size, page * size + size) }),
@@ -230,6 +416,36 @@ the select below `destroy()`s the current instance and constructs a new one with
       { field: 'active', label: 'Active', width: 100, type: 'checkbox' },
       { field: 'score',  label: 'Score',  width: 90, align: 'right' },
     ],
+  });
+
+  /* ── Pinned rows ─────────────────────────────────────────────────────────
+     pinnedBottomRows is a snapshot, not a live view - the total below is computed once from
+     this same PINNED_ROWS array, so it stays correct without the grid needing to know anything
+     about "sum of salary column". */
+  const PINNED_ROWS = makeRows(30);
+  const pinnedGrid = new JHGrid({
+    container: '#jhg-demo-pinned',
+    width: 560, height: 360,
+    showRowNumbers: true,
+    rowSelection: 'multi',
+    rowPinButton: true,
+    data: PINNED_ROWS,
+    columnDefs: [
+      { field: 'name',   label: 'Name',   width: 150 },
+      { field: 'dept',   label: 'Dept',   width: 140 },
+      { field: 'grade',  label: 'Grade',  width: 90 },
+      { field: 'salary', label: 'Salary', width: 140, align: 'right', renderer: CellRenderers.currency({ locale: 'en-US', currency: 'USD' }) },
+    ],
+    pinnedBottomRows: [{
+      name: `Total (${PINNED_ROWS.length})`,
+      dept: '', grade: '',
+      salary: PINNED_ROWS.reduce((sum, r) => sum + r.salary, 0),
+    }],
+  });
+  document.getElementById('jhg-demo-pin-btn').addEventListener('click', () => {
+    const [row] = pinnedGrid.getSelectedRows();
+    if (row == null) { alert('Select a row first (click its row number).'); return; }
+    pinnedGrid.pinRow(row, 'top');
   });
 
   /* ── Row selection ──────────────────────────────────────────────────── */

@@ -2,7 +2,7 @@
 # Just the Docs isn't on GitHub Pages' built-in theme allowlist, so it's pulled in as a
 # remote theme instead (jekyll-remote-theme is on the allowed-plugins list).
 title: JH Grid
-description: High-performance Canvas-based data grid with smooth 2D virtualization.
+description: Canvas-based data grid with 2D virtualization, built-in editing, filtering and undo/redo, and zero runtime dependencies.
 remote_theme: just-the-docs/just-the-docs
 
 plugins:

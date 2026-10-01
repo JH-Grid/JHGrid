@@ -1,0 +1,121 @@
+<aside class="toc-sidebar" id="toc-sidebar" aria-label="Table of contents">
+  <nav>
+    <div class="toc-sidebar-title">On this page</div>
+    <ul class="toc-list" id="toc-list"></ul>
+  </nav>
+</aside>
+
+<script>
+(function () {
+  var main = document.querySelector('#main-content main');
+  var list = document.getElementById('toc-list');
+  var aside = document.getElementById('toc-sidebar');
+  if (!main || !list || !aside) return;
+
+  var headings = Array.prototype.filter.call(
+    main.querySelectorAll('h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]'),
+    function (h) { return h.closest('#main-content main') === main; }
+  );
+
+  /* Nothing to link to on short pages - hide the whole column rather than show an empty box. */
+  if (headings.length < 2) {
+    aside.style.display = 'none';
+    return;
+  }
+
+  function headingText(heading) {
+    return heading.textContent.replace(/^\s*Link\s*/, '').trim();
+  }
+
+  var CHEVRON = '<svg viewBox="0 0 24 24" aria-hidden="true"><use xlink:href="#svg-arrow-right"></use></svg>';
+
+  /* Group the flat heading list into a two-level tree: each h2 starts a new collapsible section,
+     h3-h6 nest under whichever h2 came before them. A heading before the first h2 (just the page's
+     own h1) renders as a plain, non-collapsible link above the sections. */
+  var byHeading = new Map();
+  var currentGroupChildren = null;
+
+  headings.forEach(function (heading) {
+    var li = document.createElement('li');
+    var a = document.createElement('a');
+    a.className = 'toc-link';
+    a.href = '#' + heading.id;
+    a.textContent = headingText(heading);
+    byHeading.set(heading, a);
+
+    if (heading.tagName === 'H2') {
+      li.className = 'toc-group';
+      var toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'toc-group-toggle';
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.innerHTML = CHEVRON;
+      toggle.addEventListener('click', function () { setExpanded(li, !li.classList.contains('expanded')); });
+
+      var children = document.createElement('ul');
+      children.className = 'toc-children';
+      currentGroupChildren = children;
+
+      li.appendChild(toggle);
+      li.appendChild(a);
+      li.appendChild(children);
+      list.appendChild(li);
+    } else if (currentGroupChildren) {
+      li.className = 'toc-item toc-level-' + heading.tagName.slice(1);
+      li.appendChild(a);
+      currentGroupChildren.appendChild(li);
+    } else {
+      li.className = 'toc-item toc-root';
+      li.appendChild(a);
+      list.appendChild(li);
+    }
+  });
+
+  /* An h2 followed directly by another h2 (no h3 under it) got the full toggle+children treatment
+     above but has nothing to expand - demote it to a plain link so it doesn't show a dead chevron
+     over an empty box. */
+  Array.prototype.forEach.call(list.querySelectorAll('.toc-group'), function (group) {
+    if (group.querySelector('.toc-children').childElementCount > 0) return;
+    group.querySelector('.toc-group-toggle').remove();
+    group.querySelector('.toc-children').remove();
+    group.className = 'toc-item toc-root';
+  });
+
+  function setExpanded(groupLi, expanded) {
+    groupLi.classList.toggle('expanded', expanded);
+    groupLi.querySelector('.toc-group-toggle').setAttribute('aria-expanded', String(expanded));
+  }
+
+  /* Start with only the first section open - enough to show the page has more than one heading
+     without dumping the whole outline at once. Scrolling into a later section expands it too (see
+     the observer below); nothing auto-collapses once opened. */
+  var firstGroup = list.querySelector('.toc-group');
+  if (firstGroup) setExpanded(firstGroup, true);
+
+  var current = null;
+  function activate(link) {
+    if (current === link) return;
+    if (current) current.classList.remove('active');
+    if (link) {
+      link.classList.add('active');
+      var group = link.closest('.toc-group') || link.parentElement.closest('.toc-group');
+      if (group) setExpanded(group, true);
+    }
+    current = link;
+  }
+
+  /* Pick the entry closest to the top of the viewport among those currently intersecting; falls
+     back to whatever last crossed the line when nothing is intersecting (e.g. between two short
+     sections) so the highlight never just goes blank mid-scroll. */
+  var observer = new IntersectionObserver(function (entries) {
+    var visible = entries.filter(function (e) { return e.isIntersecting; });
+    var pick = visible.length
+      ? visible.reduce(function (a, b) { return a.boundingClientRect.top <= b.boundingClientRect.top ? a : b; })
+      : null;
+    if (pick) activate(byHeading.get(pick.target));
+  }, { rootMargin: '-64px 0px -70% 0px', threshold: 0 });
+
+  headings.forEach(function (h) { observer.observe(h); });
+  activate(byHeading.get(headings[0]));
+})();
+</script>
