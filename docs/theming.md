@@ -1,6 +1,7 @@
 ---
 title: Themes
 nav_order: 5
+description: Theme the JHGrid data grid - the full theme object, styling with your own CSS through --jhg-* custom properties, and canvas motion tuning.
 ---
 
 # Themes

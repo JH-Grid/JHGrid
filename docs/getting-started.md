@@ -1,6 +1,7 @@
 ---
 title: Getting Started
 nav_order: 2
+description: Install the JHGrid JavaScript data grid from npm or a CDN and render your first grid, with React, Vue and Angular setup and a troubleshooting table.
 ---
 
 # Getting Started
@@ -89,7 +90,7 @@ Edits are held in the grid, not pushed anywhere, until you collect them with
 
 ## Using it in a framework
 
-JH Grid is plain DOM and canvas, created with `new JHGrid()` against an element. In any framework
+JHGrid is plain DOM and canvas, created with `new JHGrid()` against an element. In any framework
 the recipe is the same: create it once the element exists, keep the instance, and call
 [`destroy()`](api.md#destroy) when the element goes away, which removes its listeners and DOM.
 

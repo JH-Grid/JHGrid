@@ -1,9 +1,17 @@
 # GitHub Pages builds this with its own bundled Jekyll - no local Ruby/npm install needed.
 # Just the Docs isn't on GitHub Pages' built-in theme allowlist, so it's pulled in as a
 # remote theme instead (jekyll-remote-theme is on the allowed-plugins list).
-title: JH Grid
-description: Canvas-based data grid with 2D virtualization, built-in editing, filtering and undo/redo, and zero runtime dependencies.
+title: JHGrid
+# Absolute URLs for the canonical tags and sitemap.xml. GitHub Pages infers both, but
+# jekyll-sitemap needs them at build time to write absolute <loc> entries.
+url: https://jh-grid.github.io
+baseurl: /JHGrid
+description: >-
+  JHGrid is a canvas-based JavaScript data grid for large datasets: 1,000,000 rows with 2D
+  virtualization, inline editing, filtering, sorting, frozen columns, undo/redo and CSV export,
+  and zero runtime dependencies.
 remote_theme: just-the-docs/just-the-docs
+google_site_verification: kvW3ljYCUEUUyua4mgnCElIfWEehBkXcJAGWMkSNOlA
 
 plugins:
   - jekyll-remote-theme
@@ -11,6 +19,9 @@ plugins:
   # file viewer, which resolves those directly) - this plugin rewrites the same links to the
   # built page URLs instead, so they don't 404 once Jekyll turns each .md into a page.
   - jekyll-relative-links
+  # Writes sitemap.xml and robots.txt. Without a sitemap, Googlebot can only discover pages by
+  # following links in from somewhere it already crawls, which this site has very few of.
+  - jekyll-sitemap
 
 # Just the Docs settings
 search_enabled: true

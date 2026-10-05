@@ -433,9 +433,11 @@ export interface PaginationOptions {
 
 export interface JHGridOptions {
   container:        string | Element;
+  /** `totalRows` must be a non-negative integer; anything else is reported on the console and treated as 0. */
   fetchMeta?:       (state?: GridFilterState | null) => Promise<GridMeta>;
   fetchData?:       (page: number, size: number, state?: GridFilterState | null) => Promise<GridData>;
   fetchPage?:       (page: number, size: number, state?: GridFilterState | null) => Promise<GridData & { totalRows: number; columns?: string[] }>;
+  /** An empty array needs `columnDefs` as well, since columns cannot be derived from no rows. */
   data?:            Record<string, unknown>[]
                     | Promise<Record<string, unknown>[]>
                     | (() => Promise<Record<string, unknown>[]> | Record<string, unknown>[]);
@@ -557,6 +559,11 @@ export declare class JHGrid {
   getSelection(): CellSelection | null;
   setSelection(selection: CellSelectionInput | null, options?: { scroll?: boolean }): void;
   focusCell(row: number, col: number | string): void;
+  /**
+   * Opens the cell editor. Returns false when the column is not editable and for
+   * `type: 'checkbox'` / `type: 'button'` columns, which have no editor.
+   * Throws RangeError/TypeError for an out-of-range row, an unknown field, or a hidden column.
+   */
   startEditing(row: number, col: number | string): boolean;
   stopEditing(options?: { cancel?: boolean }): void;
 
@@ -569,6 +576,7 @@ export declare class JHGrid {
   getPageSize(): number;
 
   getEdits(): Record<number, Record<string, string>>;
+  /** Throws when the `rowKey` option is not set, since changed rows cannot be identified without it. */
   getChanges(): {
     updated: Record<string, unknown>[];
     added:   Record<string, unknown>[];
@@ -576,7 +584,12 @@ export declare class JHGrid {
   };
   acknowledgeChanges(opts?: { keepScroll?: boolean }): Promise<void>;
   clearEdits(): void;
+  /**
+   * Writes a cell edit from code. Unlike user editing this ignores `editableCols`,
+   * so a read-only column can still be changed programmatically. Hidden columns are accepted.
+   */
   setCellValue(row: number, field: string, value: string): void;
+  /** Same rules as `setCellValue`, applied as a single undo step. */
   setCellValues(entries: Array<{ row: number; field: string; value: string }>): void;
 
   isValid(): boolean;
@@ -591,6 +604,12 @@ export declare class JHGrid {
   getSelectedRows(): number[];
   clearRowSelection(): void;
 
+  /**
+   * Filter, sort and quick-filter changes ask for confirmation (`window.confirm`) when there are
+   * unsaved edits on server rows. If the user cancels, the call is a no-op: the filter/sort state
+   * is left untouched, so `getState()` never reports a condition the rows do not have.
+   * Hidden columns are accepted by `setFilter` / `setFilterValues` / `setSort`.
+   */
   clearFilters(): void;
   setFilter(field: string, value: string | null): void;
   setFilterValues(field: string, values: string[] | null): void;
@@ -637,7 +656,12 @@ export declare class JHGrid {
   getState(): GridState;
   setState(state: Partial<GridState>): Promise<void>;
 
-  printGrid(opts?: { title?: string; includeHeaders?: boolean }): void;
+  /**
+   * Prints the grid in a popup window. By default only rows already loaded into the cache are
+   * printed and a console warning reports how many server rows were left out; pass
+   * `{ full: true }` to fetch every filtered row first (returns a Promise in that case).
+   */
+  printGrid(opts?: { title?: string; includeHeaders?: boolean; full?: boolean }): void | Promise<void>;
 
   exportCsv(opts?: {
     filename?:       string;
@@ -654,6 +678,7 @@ export declare class JHGrid {
   getDeletedRows(): number[];
   getRemovedRows(): number[];
 
+  /** Does not fire `onHeaderCheckboxChange`; that callback reports user clicks only. */
   setHeaderCheckbox(field: string, checked: boolean): void;
   getHeaderCheckbox(field: string): boolean;
 

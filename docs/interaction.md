@@ -1,6 +1,7 @@
 ---
 title: Interaction Reference
 nav_order: 6
+description: Every mouse and keyboard interaction in the JHGrid data grid, including range selection, copy and paste as TSV, the fill handle and remappable shortcuts.
 ---
 
 # Interaction Reference

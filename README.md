@@ -1,11 +1,10 @@
-# JH Grid
+# JHGrid - High-Performance JavaScript Data Grid
 
-Canvas-based data grid with 2D virtualization, built-in editing, filtering and undo/redo, and zero runtime dependencies.
+Canvas-based data grid with 2D virtualization, built-in editing, filtering, undo/redo, and zero runtime dependencies.
 
-**[▶ Try the live demo](https://jh-grid.github.io/JHGrid/docs/demo)**: 1,000,000-row scroll
-performance, editing, filtering, and frozen columns, running in your browser right now.
+**[▶ Try the live demo](https://jh-grid.github.io/JHGrid/docs/demo)**: Explore 1,000,000-row scrolling, editing, filtering, frozen columns, and more, running directly in your browser.
 
-![JH Grid screenshot](docs/images/jhgrid.png)
+![JHGrid screenshot](docs/images/jhgrid.png)
 
 ---
 
@@ -34,7 +33,7 @@ performance, editing, filtering, and frozen columns, running in your browser rig
 configuration, with no large-data tuning options. Windows 11, i7-12700H, 32GB, headless Chromium
 153. Timed from the API call to each grid's own "done" signal plus two painted frames.
 
-| | **JH Grid 0.3.0** | Grid A | Grid B | Grid C |
+| | **JHGrid** | Grid A | Grid B | Grid C |
 |---|---:|---:|---:|---:|
 | Create grid, first paint | **47ms** | 719ms | 404ms | 160ms |
 | Sort text, many repeats | **366ms** | 2.80s | 6.57s | 1.38s |

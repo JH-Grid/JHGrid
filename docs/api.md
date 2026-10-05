@@ -1,6 +1,7 @@
 ---
 title: API Reference
 nav_order: 4
+description: JHGrid API reference - every constructor option, the async data source interface, column types and cell editors, validation, pagination, filtering, sorting, row and column CRUD, context menus and CSV export.
 ---
 
 # API Reference

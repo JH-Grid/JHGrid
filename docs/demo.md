@@ -1,6 +1,7 @@
 ---
 title: Live Demo
 nav_order: 3
+description: Live JavaScript data grid demos - scroll 1,000,000 rows, edit cells inline, filter and sort, freeze columns and pin total rows, all running in the browser.
 ---
 
 # Live Demo

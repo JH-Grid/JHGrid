@@ -1,9 +1,10 @@
 ---
 title: Docs Index
 nav_exclude: true
+description: Index of the JHGrid data grid documentation - getting started, API reference, theming, interaction, Spring Boot integration and architecture.
 ---
 
-# JH Grid Documentation
+# JHGrid Documentation
 
 - [Getting Started](getting-started.md): what a grid needs, the three decisions to make up front, and where each is documented
 - [Live Demo](demo.md): 1,000,000-row scroll performance, editing, filtering, frozen columns, pinned rows, row selection, column types/renderers, and theming — all running in your browser

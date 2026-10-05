@@ -1,6 +1,7 @@
 ---
 title: Browser Support
 nav_order: 9
+description: Browser versions the JHGrid data grid supports (Chrome/Edge 99+, Firefox 112+, Safari 15.4+) and the platform features that set that floor.
 ---
 
 # Browser Support

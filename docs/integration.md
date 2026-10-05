@@ -1,13 +1,14 @@
 ---
 title: Spring Boot Integration
 nav_order: 7
+description: Connect the JHGrid data grid to a Spring Boot backend - REST API shape, SQL paging, server-side sorting and filtering, and saving edited rows.
 ---
 
 # Spring Boot Integration
 
 [← Docs index](README.md)
 
-JH Grid pairs naturally with a Spring Boot REST backend. The grid never filters or sorts server rows
+JHGrid pairs naturally with a Spring Boot REST backend. The grid never filters or sorts server rows
 itself; it tells your endpoints what the user asked for, and renders whatever they return. This page
 walks from the smallest working pair of endpoints to sorting, filtering and saving.
 
