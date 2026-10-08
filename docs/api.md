@@ -256,8 +256,10 @@ What the grid does with the array:
   that field. **Set filter** (`setFilterValues`, the checklist): exact match on the value as text.
 - **Quick filter** (`setQuickFilter`): case-insensitive substring match against *every* value of the
   row object, including keys that have no column.
-- **Sorting.** Two numbers compare as numbers; anything else compares as text with numeric
-  collation, so `'item2'` sorts before `'item10'`. Empty values compare as text.
+- **Sorting.** Two numbers compare as numbers; a `type: 'date'` column compares as dates read through
+  its pattern, so `'12/31/2019'` sorts before `'03/01/2020'` under `MM/DD/YYYY`; anything else compares
+  as text with numeric collation, so `'item2'` sorts before `'item10'`. Empty values, and a date value
+  the pattern cannot read, compare as text.
 
 ```js
 const users = [
@@ -312,7 +314,7 @@ complete field list in one place.
 | `renderer` | `string \| (ctx, args) => void` | A `CellRenderers` key, or a custom draw function. Overrides the renderer `type` would otherwise select |
 | `editor` | `string \| (ctx) => {value, remove}` | A `CellEditors` key, or a custom editor factory. Overrides the editor `type` would otherwise select. `ctx` carries the anchored-DOM surfaces a custom editor mounts its UI with - see [Editor surfaces](#editor-surfaces-ctxcellbox--ctxpopup--ctxdone) |
 | `editorOptions` | `object` | Options for the column's built-in editor: the one `editor` names, or the one `type` selects (`'date'`, `'dropdown'`, `'multiselect'`, `'richtext'`). See [Editor options](#editor-options-columndefseditoroptions) |
-| `format` | `string` | Date format for `type: 'date'` columns (e.g. `'YYYY-MM-DD'`, `'YY/MM/DD'`, `'YYYY-MM-DD HH:mm'`), or `'locale'` to write the date the way the grid's `locale` does (the editor is then the native date picker, see [`type: 'date'`](#date-columns-type-date)). With a pattern it drives the cell text, the editor's input mask, validation, clipboard copy, CSV export and printing. Default `'YYYY-MM-DD'` |
+| `format` | `string` | Date format for `type: 'date'` columns (e.g. `'YYYY-MM-DD'`, `'YY/MM/DD'`, `'YYYY-MM-DD HH:mm'`), or `'locale'` to write the date the way the grid's `locale` does (the editor is then the native date picker, see [`type: 'date'`](#date-columns-type-date)). With a pattern it drives the cell text, the editor's input mask, validation, clipboard copy, CSV export and printing. Default: the locale's own pattern - `'MM/DD/YYYY'` for `en`, `'YYYY-MM-DD'` for `ko`, `'YYYY/MM/DD'` for `ja` and `zh`, overridable for the whole grid with [`i18n.dateFormat`](#text-reference-i18n) |
 | `options` | `DropdownOption[] \| (rowData) => DropdownOption[]` | Option list for `type: 'dropdown'`/`'multiselect'`: a string array, `{value,label}` array, or a function computing options per row. The cell stores the option's `value`; see [Dropdown and multiselect](#dropdown-and-multiselect-columns-type-dropdown--multiselect) |
 | `editable` | `boolean` | Per-column override of `opts.editableCols`, in either direction: `true` makes the column editable even when `editableCols` leaves it out, `false` makes it read-only even under `editableCols: '*'`. Omit it to follow `editableCols` |
 | `validation` | `ColumnValidation` | Declarative required/pattern/min/max/length/custom rules: see [Validation](#validation-columndefsvalidation) |
@@ -1720,8 +1722,10 @@ const grid = new JHGrid({
 `'KRW'` whatever the locale, so pass `currency` explicitly for anything other than won.
 
 Besides the number, date and currency renderers, `locale` selects the text of the built-in messages
-and menus (see the reference below). A column's `type: 'date'` `format` does *not* follow it
-(`'YYYY-MM-DD'` stays as it is), unless you ask for `format: 'locale'` - see
+and menus (see the reference below). A `type: 'date'` column that sets no `format` of its own follows
+it too, through the pack's `dateFormat` (`'MM/DD/YYYY'` for `en`, `'YYYY-MM-DD'` for `ko`,
+`'YYYY/MM/DD'` for `ja` and `zh`). Write the column's `format` out to pin it to one pattern whatever
+the locale, or ask for `format: 'locale'` to have `Intl` write the date - see
 [Date Columns](#date-columns-type-date).
 
 ### Text Reference (`i18n`)
@@ -1790,6 +1794,7 @@ The keys, with the English text:
 | Validation | `validationRequired(col)`, `validationPattern(col)`, `validationInvalid(col)` | `col is required.`, `col format is invalid.`, `col is invalid.` |
 | | `validationMin(col, min)`, `validationMax(col, max)` | `col must be at least min.`, `col must be at most max.` |
 | | `validationMinLength(col, len)`, `validationMaxLength(col, len)` | `col must be at least len characters.`, `... at most len characters.` |
+| Dates | `dateFormat` | `MM/DD/YYYY` (the default `format` of a `type: 'date'` column that sets none; `YYYY-MM-DD` in the `ko` pack, `YYYY/MM/DD` in `ja` and `zh`) |
 | Pager | `pagerFirst`, `pagerPrev`, `pagerNext`, `pagerLast` | `First page`, `Previous page`, `Next page`, `Last page` |
 | | `pagerPageSize`, `pagerPageLabel(page, pageCount)` | `Rows per page`, `Page page of pageCount` |
 | Export | `exportCsvFilename`, `printButton` | `export.csv`, `Print` |
@@ -1857,6 +1862,13 @@ new JHGrid({
   },
 });
 ```
+
+A decorator draws on plain `ctx` with the cell box it is given, and the canvas state it inherits is
+whatever the cell drawn just before it left behind. Unlike a column's renderer it does not start
+from a reset state and has no `args.text()`, so set `textAlign`, `textBaseline` and `fillStyle`
+yourself before any `fillText`. Leaving `textAlign` to chance puts the text wherever the previous
+column's alignment says, which for a right-aligned neighbour means drawing it to the left of the
+coordinate you passed.
 
 `cellDecorator` runs for every visible, loaded cell on every render, so keep it cheap and let it
 return early for cells it has nothing to say about. `cellTooltip` returns text (or `null` for
@@ -1992,7 +2004,37 @@ Register your own under a string key with `registerCellRenderer(name, factory)` 
 counterpart, `registerCellEditor`), see the custom-editor example below for the matching factory
 shape. The factory is called once per column with the options you pass, and returns the function
 that draws one cell. `args` carries the cell's box (`x`, `y`, `w`, `h`), `value`, `rowData`,
-`rowIndex`, `colIndex`, `theme` and `padding`:
+`rowIndex`, `colIndex`, `theme`, `padding` and `text()`.
+
+`args.text(str, opts)` writes one line into the cell: it uses the column's own alignment, centres
+the line vertically and clips it with an ellipsis at the cell edge, so a renderer that only puts
+text in a cell needs no coordinates at all. `opts` takes `align`, `color`, `size`, `bold`, `font`
+and `padding`. It draws only while the renderer runs; keeping it and calling it later does nothing.
+
+```js
+import { JHGrid, registerCellRenderer } from '@jh-grid/jhgrid-js';
+
+// 0-5 as stars. No x/y arithmetic: args.text() knows the cell it is in.
+registerCellRenderer('stars', () => (ctx, { value, text }) => {
+  const n = Math.max(0, Math.min(5, Math.round(Number(value) || 0)));
+  text('★'.repeat(n) + '☆'.repeat(5 - n), { color: '#f59e0b', size: 15 });
+});
+
+new JHGrid({
+  container: '#grid',
+  data: [{ name: 'Sky', rating: 4 }, { name: 'Rose', rating: 2 }],
+  columnDefs: [
+    { field: 'name' },
+    { field: 'rating', renderer: 'stars' },
+  ],
+});
+```
+
+![A Rating column drawing 0-5 stars through args.text(), right-aligned like the rest of the column](images/custom-renderer-stars.png)
+
+The same renderer runs on the [live demo page](demo.md#column-types--renderers)'s Rating column.
+
+For anything beyond a line of text, draw on `ctx` with the cell box:
 
 ```js
 import { JHGrid, registerCellRenderer } from '@jh-grid/jhgrid-js';
@@ -2037,8 +2079,9 @@ columnDefs: [
 ],
 ```
 
-- `type: 'date'`: a native date input, or a masked input when the column has a `format`, and
-  `CellRenderers.date()` for display. See [Date Columns](#date-columns-type-date).
+- `type: 'date'`: a masked input in the column's date pattern, or a native date input when its
+  `format` is `'locale'`, and `CellRenderers.date()` for display. See
+  [Date Columns](#date-columns-type-date).
 - `type: 'richtext'`: double-clicking a cell opens a `contenteditable` editor with a bold/italic/
   underline/strikethrough toolbar. The stored value is a sanitized HTML string made up only of
   `<b>/<i>/<u>/<s>` tags, and the grid draws it on the canvas as a **single line** (line breaks,
@@ -2262,15 +2305,16 @@ box in the header see [`headerCheckbox`](#row-selection-rowselection--header-che
 
 ### Date Columns (`type: 'date'`)
 
-A date cell holds **text**, not a `Date` object, and what the text looks like depends on whether the
-column has a `format`:
+A date cell holds **text**, not a `Date` object. Every date column has a pattern: the `format` you
+give it, or the one its locale uses when you give none (`'MM/DD/YYYY'` under `en`, `'YYYY-MM-DD'`
+under `ko`, `'YYYY/MM/DD'` under `ja` and `zh`). `format: 'locale'` is the one case without a pattern:
 
-| | Without `format` | With `format` |
+| | With a pattern (`format`, or the locale's) | `format: 'locale'` |
 |---|---|---|
-| Cell shows | the value as `YYYY-MM-DD` | the value written in `format` |
-| Editor | the browser's native date input | a text box that inserts the separators as you type digits, with a calendar button that opens the native picker |
-| Saved as | `YYYY-MM-DD` (`YYYY-MM-DDTHH:mm` with `editorOptions: { mode: 'datetime-local' }`) | text in `format`, for example `'25/01/02'` |
-| Valid when | the browser's `Date` can parse it | it matches `format` and is a real date: month 1 to 12, a day that exists in that month (leap years included), hour and minute in range |
+| Cell shows | the value written in that pattern | the date the way `Intl` writes it for the grid's `locale` (`2024. 3. 1.` under `ko-KR`) |
+| Editor | a text box that inserts the separators as you type digits, with a calendar button that opens the native picker | the browser's native date input |
+| Saved as | text in that pattern, for example `'25/01/02'` | `YYYY-MM-DD` (`YYYY-MM-DDTHH:mm` with `editorOptions: { mode: 'datetime-local' }`) |
+| Valid when | it matches the pattern, or is ISO text, and is a real date: month 1 to 12, a day that exists in that month (leap years included), hour and minute in range | it is ISO text |
 
 `format` is a pattern of `YYYY`, `YY`, `MM`, `DD`, `HH`, `mm` and `ss`; every other character is copied as
 it is. A pattern with a time part (`HH`, `mm`) gives the calendar button a date-and-time picker.
@@ -2285,7 +2329,7 @@ const grid = new JHGrid({
   ],
   columnDefs: [
     { field: 'task',  label: 'Task', width: 160 },
-    // No format: native date input, ISO text. min/max limit what the picker offers.
+    // No format: the locale's pattern (MM/DD/YYYY under en). min/max limit what the picker offers.
     { field: 'due',   label: 'Due',  type: 'date', width: 130,
       editorOptions: { min: '2025-01-01', max: '2025-12-31' } },
     // With a format: type 2025-03-14 0930 and it becomes 2025-03-14 09:30.
@@ -2298,10 +2342,18 @@ const grid = new JHGrid({
 
 Things worth knowing:
 
-- **Load values in the column's `format`.** A loaded value is displayed through `Date` parsing, so
-  `'2024-03-01'` shows as `'24/03/01'` under `YY/MM/DD`. But the editor opens with the value as it was
-  stored, and whatever the user types is saved in `format`, so a column that starts out in another
-  format ends up holding both. Have the server send the same format the column uses.
+- **A value is read through the column's pattern, or as ISO text - never guessed at.** `'2024-03-01'`
+  shows as `'24/03/01'` under `YY/MM/DD`, and `'14/03/2024'` shows as `'2024-03-14'` under
+  `DD/MM/YYYY`. A value that is neither - `'03/01/2020'` in a `YYYY-MM-DD` column, where there is no
+  telling the month from the day - is left exactly as it was loaded: shown, copied and exported as
+  that same text, and marked invalid, rather than silently turned into another date. An ISO
+  timestamp that names its zone (`'2024-03-01T10:00:00Z'`) is read as an instant and shown in local
+  time.
+- **An ISO value is at home in any date column.** It is read and displayed in the column's pattern, the
+  editor opens on it in that pattern, and it passes validation - so a server that sends ISO needs no
+  translation layer. Opening such a cell and closing it without a change leaves the stored ISO text as
+  it is; a date the user really types is saved in the column's pattern, so a column fed both formats
+  ends up holding both (which displays, sorts, copies and exports the same either way).
 - **`format: 'locale'`** shows the date the way the grid's `locale` does (`2024. 3. 1.` for `ko-KR`).
   That is not a pattern an input mask can be built from, so such a column edits with the native date
   picker and stores ISO text (`2024-03-01`); use a pattern when you want the typed, masked input.
@@ -2365,7 +2417,7 @@ Each built-in editor is a `CellEditors` entry, chosen by the column's `type` or 
 |---|---|---|
 | `text` | `type: 'text'` (the default) | none |
 | `textMultiline` | automatically for a value that contains a line break, or `editor: 'textMultiline'` | none |
-| `date` | `type: 'date'` | `mode`: `'date'` (default) or `'datetime-local'`, used when the column has no `format`. `min` / `max`: limits for the native picker, as `'YYYY-MM-DD'` text. See [Date Columns](#date-columns-type-date) |
+| `date` | `type: 'date'` | `mode`: `'date'` (default) or `'datetime-local'`, used when the column's `format` is `'locale'`. `min` / `max`: limits for the native picker, as `'YYYY-MM-DD'` text. See [Date Columns](#date-columns-type-date) |
 | `dropdown` | `type: 'dropdown'` | `options`: replaces the column's `options` |
 | `multiselect` | `type: 'multiselect'` | `options` as above, and `delimiter` (default `','`) |
 | `richtext` | `type: 'richtext'` | `marks`: which toolbar buttons to offer, from `'bold'`, `'italic'`, `'underline'`, `'strike'` (default all four) |

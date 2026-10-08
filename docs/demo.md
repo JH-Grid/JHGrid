@@ -193,6 +193,13 @@ editor, e.g. formatting a plain number as currency.
 <div class="jhg-demo-card" id="jhg-demo-types"></div>
 
 ```js
+// The Rating column's renderer: args.text() writes one line into the cell box, using the
+// column's own alignment, so a renderer like this needs no coordinates.
+registerCellRenderer('stars', () => (ctx, { value, text }) => {
+  const n = Math.max(0, Math.min(5, Math.round(Number(value) || 0)));
+  text('★'.repeat(n) + '☆'.repeat(5 - n), { color: '#f59e0b', size: 15 });
+});
+
 new JHGrid({
   container: '#grid',
   data: rows,
@@ -203,9 +210,14 @@ new JHGrid({
     { field: 'joined', label: 'Joined', width: 130, type: 'date', format: 'YYYY-MM-DD' },
     { field: 'salary', label: 'Salary', width: 140, align: 'right',
       renderer: CellRenderers.currency({ locale: 'en-US', currency: 'USD' }) },
+    { field: 'rating', label: 'Rating', width: 110, align: 'right', renderer: 'stars' },
   ],
 });
 ```
+
+The Joined column names its own `format`. Leave `format` out and the column follows the locale's
+date pattern instead, so the same stored `2026-03-14` reads `03/14/2026` under `en` and
+`2026/03/14` under `ja` — see [Date Columns](api.md#date-columns-type-date).
 
 Thirteen renderers ship built in (`progressBar`, `badge`, `checkmark`, `link`, `image`, …) and
 `registerCellRenderer()` adds your own — see
@@ -297,7 +309,7 @@ non-canvas parts (menus, panels, the pager) read.
      the bundle just built, and the published page falls through to the CDN. @latest resolves to the
      newest git tag; pin an exact tag instead if you copy this into a page of your own. */
   const CDN = 'https://cdn.jsdelivr.net/gh/JH-Grid/JHGrid@latest/dist/jhgrid.esm.js';
-  const { JHGrid, CellRenderers } =
+  const { JHGrid, CellRenderers, registerCellRenderer } =
     await import('/dist/jhgrid.esm.js').catch(() => import(CDN));
   const DEPTS  = ['Engineering', 'Sales', 'Marketing', 'Support', 'Design'];
   const GRADES = ['A', 'B', 'C', 'D'];
@@ -313,8 +325,16 @@ non-canvas parts (menus, panels, the pager) read.
       score:  (i * 37) % 101,
       active: i % 3 !== 0,
       joined: `20${20 + (i % 5)}-${String((i % 12) + 1).padStart(2, '0')}-${String((i % 27) + 1).padStart(2, '0')}`,
+      rating: i % 6,
     }));
   }
+
+  /* A custom renderer: 0-5 as stars. args.text() writes the line into the cell box with the
+     column's own alignment, so there is no x/y arithmetic and nothing spills sideways. */
+  registerCellRenderer('stars', () => (ctx, { value, text }) => {
+    const n = Math.max(0, Math.min(5, Math.round(Number(value) || 0)));
+    text('★'.repeat(n) + '☆'.repeat(5 - n), { color: '#f59e0b', size: 15 });
+  });
 
   /* ── 1,000,000 rows ─────────────────────────────────────────────────────
      Static dataset, no filter/sort UI here - the point is raw virtualized-scroll
@@ -471,7 +491,7 @@ non-canvas parts (menus, panels, the pager) read.
   /* ── Column types & renderers ───────────────────────────────────────── */
   new JHGrid({
     container: '#jhg-demo-types',
-    width: 560, height: 360,
+    width: 700, height: 360,
     editableCols: '*',
     showRowNumbers: true,
     data: makeRows(40),
@@ -480,6 +500,7 @@ non-canvas parts (menus, panels, the pager) read.
       { field: 'active', label: 'Active', width: 90,  type: 'checkbox' },
       { field: 'joined', label: 'Joined', width: 130, type: 'date', format: 'YYYY-MM-DD' },
       { field: 'salary', label: 'Salary', width: 140, align: 'right', renderer: CellRenderers.currency({ locale: 'en-US', currency: 'USD' }) },
+      { field: 'rating', label: 'Rating', width: 110, align: 'right', renderer: 'stars' },
     ],
   });
 

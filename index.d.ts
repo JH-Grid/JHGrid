@@ -66,6 +66,18 @@ export interface GridTheme {
 }
 
 
+export interface CellTextOptions {
+  /** Defaults to the column's own align. */
+  align?:   'left' | 'center' | 'right';
+  color?:   string;
+  /** px size, keeps the theme font family. Ignored when `font` is given. */
+  size?:    number;
+  bold?:    boolean;
+  /** Full CSS font shorthand, overrides `size`/`bold`. */
+  font?:    string;
+  padding?: number;
+}
+
 export interface CellRendererArgs {
   x:        number;
   y:        number;
@@ -77,6 +89,12 @@ export interface CellRendererArgs {
   colIndex: number;
   theme:    Required<GridTheme>;
   padding:  number;
+  /**
+   * Draws text in the current cell: column alignment, vertical centring and ellipsis
+   * clipping are handled, so no coordinates are needed. Only valid synchronously,
+   * while the renderer runs.
+   */
+  text:     (str: unknown, opts?: CellTextOptions) => void;
 }
 
 export type CellRendererFn = (ctx: CanvasRenderingContext2D, args: CellRendererArgs) => void;
@@ -98,7 +116,11 @@ export interface CellContextMenuItem {
 }
 
 
-export interface CellDecoratorArgs extends CellRendererArgs {
+/** No `text()`: it belongs to a column's renderer, which owns the cell box it draws into. A
+ *  decorator draws on top of a cell that has already been drawn, on plain `ctx` with `x`/`y`/`w`/`h`.
+ *  The canvas state it inherits is whatever the previous cell left, so set `textAlign`,
+ *  `textBaseline` and `fillStyle` before drawing text. */
+export interface CellDecoratorArgs extends Omit<CellRendererArgs, 'text'> {
   field: string;
 }
 
@@ -214,6 +236,8 @@ export interface ColumnDef {
   width?:       number;
   renderer?:    string | CellRendererFn;
   type?:        'text' | 'dropdown' | 'multiselect' | 'checkbox' | 'button' | 'date' | 'richtext' | 'image';
+  /** `type: 'date'`: a pattern of YYYY/YY/MM/DD/HH/mm/ss, or 'locale'. Defaults to the locale's own
+   *  pattern (`i18n.dateFormat`): 'MM/DD/YYYY' for en, 'YYYY-MM-DD' for ko, 'YYYY/MM/DD' for ja/zh. */
   format?:      string;
   editor?:      string | ((ctx: CellEditorCtx) => CellEditorEl | null | undefined);
   editorOptions?: Record<string, unknown>;
@@ -329,6 +353,8 @@ export interface PinnedRowHandle {
 
 
 export interface GridI18n {
+  /** Default `format` of a `type: 'date'` column that sets none. A YYYY/YY/MM/DD/HH/mm/ss pattern. */
+  dateFormat?:           string;
   loading?:              string;
   loadError?:            string;
   pasteTruncated?:       (n: number) => string;

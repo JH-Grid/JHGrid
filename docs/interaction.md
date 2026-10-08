@@ -139,6 +139,9 @@ down, left or right, and they are filled from the selection. Only editable colum
   you drag up or left.
 - **Two or more numbers** with a constant step continue that step (`1, 2` gives `3, 4, 5`;
   `10, 20` gives `30, 40`).
+- **Dates** in a `type: 'date'` column continue by the step between them, in the column's own pattern
+  (`03/01/2020, 03/02/2020` gives `03/03/2020` under `MM/DD/YYYY`), and a single date counts up by a
+  day. A week's step stays a week, and a month end or a leap day is crossed correctly.
 - **Anything else** repeats the selected cells as a pattern (`Mon, Tue` gives `Mon, Tue, Mon, ...`).
 - The fill is one undo step, and `Escape` during the drag cancels it.
 
