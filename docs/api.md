@@ -8,6 +8,10 @@ description: JHGrid API reference - every constructor option, the async data sou
 
 [← Docs index](README.md)
 
+Every constructor option, method and callback of the JHGrid JavaScript data grid, on one page. This
+is the page to look things up by name; if you have not built a grid yet, start with
+[Getting Started](getting-started.md).
+
 ## Constructor Options
 
 | Option | Type | Default | Description |
@@ -2620,6 +2624,7 @@ Besides `JHGrid`, the package exports:
 | `SUPPORTED_BROWSERS` | The minimum browser versions, see [Browser Support](browser-support.md) |
 | `Renderer`, `DataManager`, `DEFAULT_THEME`, `computeHeaderCells`, `BuiltinRenderers` | Low-level pieces, see [Architecture](architecture.md#advanced--low-level-exports) |
 
-With the CDN build all of them hang off the `JHGrid` global (`JHGrid.JHGrid`, `JHGrid.CellRenderers`,
-`JHGrid.KO_I18N`, ...).
+With the CDN build the `JHGrid` global is the grid constructor, and the rest hang off it
+(`JHGrid.CellRenderers`, `JHGrid.KO_I18N`, ...). Before 0.3.4 the global held the exports instead,
+so the grid was built with `new JHGrid.JHGrid({ ... })`; that form still works.
 

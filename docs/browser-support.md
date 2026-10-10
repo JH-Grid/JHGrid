@@ -8,6 +8,9 @@ description: Browser versions the JHGrid data grid supports (Chrome/Edge 99+, Fi
 
 [← Docs index](README.md)
 
+The browser versions this JavaScript data grid runs on, and the canvas and DOM features that set
+that floor.
+
 | Browser | Minimum version |
 |---|---|
 | Chrome | 99+ |

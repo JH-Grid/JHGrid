@@ -8,6 +8,9 @@ description: How the JHGrid data grid works internally - the canvas rendering pi
 
 [← Docs index](README.md)
 
+How the canvas data grid is put together: which module owns what, and the path a frame takes from a
+scroll event to painted pixels.
+
 ```
 JHGrid (public API + event handling)
   ├── DataManager    (chunk cache, async fetch, prefetch)

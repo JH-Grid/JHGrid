@@ -1,7 +1,7 @@
 ---
 title: JavaScript Canvas Data Grid
 nav_order: 1
-description: JHGrid is a canvas-based JavaScript data grid (datagrid) for large datasets - 1,000,000 rows with 2D virtualization, inline editing, filtering, sorting, frozen columns, undo/redo and CSV export, and zero runtime dependencies.
+description: JHGrid is a canvas-based JavaScript data grid (datagrid) for large datasets - 1 million rows (1,000,000) with 2D virtualization, inline editing, filtering, sorting, frozen columns, undo/redo and CSV export, and zero runtime dependencies.
 ---
 
 # JHGrid
@@ -14,7 +14,7 @@ This site is the full API/theming/interaction reference; use the sidebar to brow
 ## Where to start
 
 - **[Getting Started](docs/getting-started)**: what a grid needs, the decisions to make up front, framework setup
-- **[Live Demo](docs/demo)**: 1,000,000-row scroll performance, editing, filtering, frozen columns, pinned rows, row selection, column types and theming, running in your browser
+- **[Live Demo](docs/demo)**: 1 million-row scroll performance, editing, filtering, frozen columns, pinned rows, row selection, column types and theming, running in your browser
 - **[API Reference](docs/api)**: constructor options, data source interface, column types and editors, validation, pagination, all public methods, text reference
 - **[Theming](docs/theming)**: the theme object, CSS custom properties, canvas motion
 - **[Interaction Reference](docs/interaction)**: mouse and keyboard behavior

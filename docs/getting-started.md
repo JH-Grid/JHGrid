@@ -1,7 +1,7 @@
 ---
 title: Getting Started
 nav_order: 2
-description: Install the JHGrid JavaScript data grid from npm or a CDN and render your first grid, with React, Vue and Angular setup and a troubleshooting table.
+description: Render your first JHGrid JavaScript data grid - what a grid needs, where the rows come from, declared or inferred columns, read-only or editable, using it inside a framework component, and a troubleshooting table.
 ---
 
 # Getting Started
@@ -94,31 +94,14 @@ JHGrid is plain DOM and canvas, created with `new JHGrid()` against an element. 
 the recipe is the same: create it once the element exists, keep the instance, and call
 [`destroy()`](api.md#destroy) when the element goes away, which removes its listeners and DOM.
 
-**Angular**
-
-```ts
-@Component({ selector: 'app-user-grid', template: '<div #host></div>' })
-export class UserGridComponent implements AfterViewInit, OnDestroy {
-  @ViewChild('host') host!: ElementRef<HTMLElement>;
-  @Input() users: Record<string, unknown>[] = [];
-  private grid?: JHGrid;
-
-  ngAfterViewInit() {
-    this.grid = new JHGrid({ container: this.host.nativeElement, data: this.users, editableCols: '*' });
-  }
-  ngOnDestroy() { this.grid?.destroy(); }
-}
-```
-
 Keep in mind:
 
 - **Keep the instance out of reactive/observable state.** The grid's internals use private class
-  fields, which do not survive being wrapped in a change-detection proxy. A plain class property
-  (as in the example above) or an untracked variable both work; a signal or an `@Input`-bound object
-  does not.
-- **Client only.** The constructor throws outside a browser, so with server-side rendering (Angular
-  Universal or similar) create the grid inside a lifecycle hook that only runs in the browser, never
-  during the render itself.
+  fields, which do not survive being wrapped in a change-detection proxy. A plain property, a ref or
+  an untracked variable all work; handing the instance to whatever your framework uses to track
+  state does not.
+- **Client only.** The constructor throws outside a browser, so with server-side rendering create
+  the grid inside a lifecycle hook that only runs in the browser, never during the render itself.
 - **Options are read once.** Changing `columnDefs` and most other options later has no effect on an
   existing grid; only the ones listed under [`setOptions()`](api.md#context-menus-rowcontextmenuitems--colcontextmenuitems--cellcontextmenuitems--setoptions)
   - including `editableCols`, for switching view mode/edit mode without a rebuild - can change. Build

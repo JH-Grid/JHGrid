@@ -90,18 +90,22 @@ No build step or package manager: copy `dist/jhgrid.esm.js` to a static resource
 ### Option C: CDN
 
 A pre-bundled IIFE build is served straight from GitHub via jsDelivr, no npm required.
-Everything is exposed on a single global, `JHGrid` (the grid constructor is `JHGrid.JHGrid`):
+The global `JHGrid` is the grid constructor, and everything else is exposed on it
+(`JHGrid.CellRenderers`, `JHGrid.VERSION`, and so on):
 
 ```html
 <!-- pin an exact tag for production; @latest resolves to the newest git tag -->
 <script src="https://cdn.jsdelivr.net/gh/JH-Grid/JHGrid@latest/dist/jhgrid.min.js"></script>
 <script>
-  const grid = new JHGrid.JHGrid({
+  const grid = new JHGrid({
     container: '#my-grid',
     // ...
   });
 </script>
 ```
+
+Before 0.3.4 the global held the exports rather than the constructor, so the grid was built with
+`new JHGrid.JHGrid({ ... })`. That form still works.
 
 ---
 
@@ -190,7 +194,7 @@ node demo/server.mjs
 **[Browse the docs online](https://jh-grid.github.io/JHGrid/)**, or read them directly in
 [`docs/`](docs/README.md), since this README stays a quick landing page:
 
-- **[Getting Started](docs/getting-started.md)**: what a grid needs, the decisions to make up front, React/Vue/Angular setup, and a troubleshooting table
+- **[Getting Started](docs/getting-started.md)**: what a grid needs, the decisions to make up front, using it inside a framework component, and a troubleshooting table
 - **[API Reference](docs/api.md)**: every constructor option, the data source interface, column types and editors, validation, pagination, all public methods (filtering, sorting, row/column CRUD, pinned rows, context menus, export) and the text reference for translating the grid
 - **[Theming](docs/theming.md)**: the full theme object, styling with your own CSS via `--jhg-*` custom properties, and canvas motion tuning
 - **[Interaction Reference](docs/interaction.md)**: every mouse and keyboard interaction, including copy, paste and the fill handle
