@@ -67,6 +67,7 @@ description: JHGrid API reference - every constructor option, the async data sou
 | `locale` | `string` | `'en-US'` | BCP-47 tag. Sets both the built-in UI text pack (e.g. `KO_I18N`) and the default locale for `CellRenderers.number/date/currency` — see [Localization](#locale--internationalization-locale--i18n) |
 | `i18n` | `object` | `undefined` | Per-key overrides layered on top of the text pack selected by `locale` — see [Localization](#locale--internationalization-locale--i18n) |
 | `ariaLabel` | `string` | `undefined` | `aria-label` of the grid container (defaults to `i18n.ariaGrid` if omitted) |
+| `confirmUnsaved` | `(message) => boolean` | `undefined` | Answers the "unsaved edits will be discarded" prompt a filter/sort change raises, in place of `window.confirm`. Returning `true` discards them. Must answer synchronously - see [Field-Based Filter / Sort](#field-based-filter--sort-setfilter--setsort) |
 | `rowHighlighter` | `(rowData, rowIndex) => string \| null` | `undefined` | Callback that conditionally sets a row's background color. Called on every render — see [Conditional Styling](#conditional-styling-rowhighlighter--cellbackground) |
 | `cellBackground` | `(rowData, rowIndex, field, colIndex) => string \| null` | `undefined` | Callback that conditionally sets a cell's background color. Painted above `rowHighlighter` and below cell content — see [Conditional Styling](#conditional-styling-rowhighlighter--cellbackground) |
 | `cellDecorator` | `(ctx, args) => void` | `undefined` | Draws directly on the canvas on top of a cell's content, for a small mark, icon, or badge. Called for every visible, loaded cell on every render (`ctx` is the `CanvasRenderingContext2D`; `args` adds `field` to the usual `x`/`y`/`w`/`h`/`rowIndex`/`colIndex` renderer args). Exceptions are caught and logged, and don't interrupt rendering |
@@ -336,6 +337,7 @@ right are written up under [Features](#features) rather than repeated here.
 | `acknowledgeSave()` | [Incremental Save (`getOriginalRowData` / `isNewRow` / `acknowledgeSave` / `acknowledgeInsert`)](#incremental-save-getoriginalrowdata--isnewrow--acknowledgesave--acknowledgeinsert) |
 | `addColumn()` | [Adding/Deleting/Hiding Columns (`addColumn` / `deleteColumn` / `hideColumn`)](#addingdeletinghiding-columns-addcolumn--deletecolumn--hidecolumn) |
 | `addRow()` | [Adding/Deleting Rows (`addRow` / `deleteRow`)](#addingdeleting-rows-addrow--deleterow) |
+| `addRows()` | [Adding/Deleting Rows (`addRow` / `deleteRow`)](#addingdeleting-rows-addrow--deleterow) |
 | `autoFitColumns()` | [Row Height (`setRowHeight` / `autoFitColumns`)](#row-height-setrowheight--autofitcolumns) |
 | `canRedo()` | [`undo()` / `redo()`](#undo--redo) |
 | `canUndo()` | [`undo()` / `redo()`](#undo--redo) |
@@ -350,6 +352,7 @@ right are written up under [Features](#features) rather than repeated here.
 | `destroy()` | [`destroy()`](#destroy) |
 | `exportCsv()` | [Data Export (`exportCsv` / `printGrid`)](#data-export-exportcsv--printgrid) |
 | `focusCell()` | [Selection, Focus and Editing from Code (`getSelection` / `setSelection` / `focusCell` / `startEditing` / `stopEditing`)](#selection-focus-and-editing-from-code-getselection--setselection--focuscell--startediting--stopediting) |
+| `getCellValue()` | [`getRowData(rowIndex)` / `ready()`](#getrowdatarowindex--ready) |
 | `getChanges()` | [Batch Save (`rowKey` / `getChanges` / `acknowledgeChanges`)](#batch-save-rowkey--getchanges--acknowledgechanges) |
 | `getCurrentPage()` | [`getCurrentPage()` / `getPageCount()`](#getcurrentpage--getpagecount) |
 | `getDeletedColumns()` | [Adding/Deleting/Hiding Columns (`addColumn` / `deleteColumn` / `hideColumn`)](#addingdeletinghiding-columns-addcolumn--deletecolumn--hidecolumn) |
@@ -371,6 +374,7 @@ right are written up under [Features](#features) rather than repeated here.
 | `getSelectedRows()` | [Row Selection (`rowSelection`) / Header Checkbox](#row-selection-rowselection--header-checkbox) |
 | `getSelection()` | [Selection, Focus and Editing from Code (`getSelection` / `setSelection` / `focusCell` / `startEditing` / `stopEditing`)](#selection-focus-and-editing-from-code-getselection--setselection--focuscell--startediting--stopediting) |
 | `getState()` | [State Snapshot/Restore (`getState` / `setState`)](#state-snapshotrestore-getstate--setstate) |
+| `getTotalRows()` | [`getRowData(rowIndex)` / `ready()`](#getrowdatarowindex--ready) |
 | `goToPage()` | [`goToPage(page)` / `nextPage()` / `prevPage()`](#gotopagepage--nextpage--prevpage) |
 | `hideColumn()` | [Adding/Deleting/Hiding Columns (`addColumn` / `deleteColumn` / `hideColumn`)](#addingdeletinghiding-columns-addcolumn--deletecolumn--hidecolumn) |
 | `isColumnVisible()` | [Adding/Deleting/Hiding Columns (`addColumn` / `deleteColumn` / `hideColumn`)](#addingdeletinghiding-columns-addcolumn--deletecolumn--hidecolumn) |
@@ -629,9 +633,15 @@ backtracking (nested quantifiers such as `(a+)+`), and never build one from untr
 ### `getRowData(rowIndex)` / `ready()`
 
 ```js
-grid.getRowData(3);  // row 3's current data (with unsaved edits applied; null if not loaded)
-await grid.ready();  // waits until the initial metadata/first chunk load completes
+grid.getRowData(3);            // row 3's current data (with unsaved edits applied; null if not loaded)
+grid.getCellValue(3, 'name');  // one cell of it, same rules; null for an unknown field
+grid.getTotalRows();           // rows the grid is showing right now, filters applied
+await grid.ready();            // waits until the initial metadata/first chunk load completes
 ```
+
+`getTotalRows()` counts what the grid shows: the filtered total, rows added with
+[`addRow()`](#addrowrowdata--deleterowrowindex) included and rows removed excluded, pinned copies
+aside. With pagination on it is the whole dataset, not the current page.
 
 ### `destroy()`
 Fully removes event listeners and DOM. Call this when unmounting a component or navigating away.
@@ -1157,7 +1167,20 @@ Two things to know before wiring these to buttons:
   shows a `window.confirm()` with `i18n.unsavedEditsWarning`; cancelling leaves the filters, sort
   and edits as they were, and confirming clears the edits, delete marks, row heights and undo
   history. Edits on rows added with `addRow()` and on pinned rows are kept. Save or collect
-  [`getEdits()`](#getedits) first if you would rather not show the dialog.
+  [`getEdits()`](#getedits) first if you would rather not show the dialog. To answer the prompt
+  with your own dialog instead of the browser's, pass `confirmUnsaved`:
+
+  ```js
+  new JHGrid({
+    // ...
+    confirmUnsaved: (message) => myConfirmSync(message),  // true discards the edits
+  });
+  ```
+
+  It has to answer synchronously, because the call that asks (a header click, `setSort()`,
+  `setFilter()`) is synchronous up to that point, so a modal that resolves later does not fit
+  here. For that case, keep the edits out of the way yourself: read `getEdits()`, show your own
+  dialog, and call `setSort()` / `setFilter()` from its callback once nothing is unsaved.
 - **They validate their arguments.** A field that is not a column throws a `RangeError`, a
   non-string `field` or `value` throws a `TypeError`, and a `setFilter()` value over 1000
   characters throws a `RangeError`. Pass `null` or `''` to `setFilter()` to remove the filter.
@@ -1182,6 +1205,9 @@ tabs.addEventListener('click', (e) => {
 grid.addRow({ name: 'New', age: 0 });        // append at the end
 grid.addRow({ name: 'New' }, { index: 0 });  // insert at the front
 
+grid.addRows([{ name: 'A' }, { name: 'B' }]);              // append a batch, returns [index, ...]
+grid.addRows([{ name: 'A' }, { name: 'B' }], { index: 2 }); // A at 2, B at 3
+
 grid.deleteRow(3);      // marks row 3 as deleted (strikethrough, undoable)
 grid.undeleteRow(3);    // clears the deletion mark
 
@@ -1202,6 +1228,11 @@ grid.undeleteRow(3);   // brings a permanently-removed row back too
 
 A row added via `addRow()` ignores all of this; it was never sent anywhere, so `deleteRow()` on
 it just removes it outright regardless of `deleteMode`.
+
+`addRows(rows, opts?)` inserts a whole list as **one** undo step and one redraw, which is what
+calling `addRow()` in a loop does not do: a hundred calls leave a hundred undo steps behind and
+redraw a hundred times. `index` places the first row and the rest follow it in order; omitted,
+they all go to the end. It returns the index of each new row and ignores an empty list.
 
 `getDeletedRows()`/`getRemovedRows()` report **server indices**, not screen positions: a row
 inserted above a marked one moves it down the screen, but not in what these two report. A server

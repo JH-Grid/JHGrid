@@ -1,6 +1,6 @@
 {
   "name": "@jh-grid/jhgrid-js",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Canvas-based data grid with 2D virtualization, built-in editing, filtering and undo/redo, and zero runtime dependencies.",
   "keywords": [
     "grid",

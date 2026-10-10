@@ -1,11 +1,12 @@
 # JHGrid - High-Performance JavaScript Data Grid
 
-Canvas-based data grid with 2D virtualization, built-in editing, filtering, undo/redo, and zero runtime dependencies.
+The Canvas data grid that gets out of your way.
 
-**[▶ Try the live demo](https://jh-grid.github.io/JHGrid/docs/demo)**: Explore 1,000,000-row scrolling, editing, filtering, frozen columns, and more, running directly in your browser.
+Zero dependencies. Built-in editing, filtering, undo/redo, and 2D virtualization.
+
+**[▶ Try the live demo](https://jh-grid.github.io/JHGrid/docs/demo)** — Explore large-scale scrolling, editing, filtering, and frozen columns, running directly in your browser.
 
 ![JHGrid screenshot](docs/images/jhgrid.png)
-
 ---
 
 ## Features

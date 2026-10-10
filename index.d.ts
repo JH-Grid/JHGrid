@@ -516,6 +516,12 @@ export interface JHGridOptions {
   locale?:          string;
   i18n?:            GridI18n;
   ariaLabel?:       string;
+  /**
+   * Answers the "unsaved edits will be discarded" prompt that a filter, sort or quick-filter
+   * change raises, in place of `window.confirm`. Return `true` to go ahead and discard them.
+   * It has to answer synchronously, so a modal that resolves later cannot be used here.
+   */
+  confirmUnsaved?:  (message: string) => boolean;
 
   onCellChange?:    (params: { row: number; field: string; newValue: string; oldValue: string }) => void;
   onCellClick?: (rowIndex: number, rowData: Record<string, unknown> | null, field: string) => void;
@@ -648,6 +654,10 @@ export declare class JHGrid {
   clearSort(): void;
 
   getRowData(rowIndex: number): Record<string, unknown> | null;
+  /** One cell's current value, unsaved edits applied. `null` when the row is not loaded. */
+  getCellValue(rowIndex: number, field: string): unknown;
+  /** Rows the grid currently shows, filters applied, pinned rows aside. */
+  getTotalRows(): number;
   getOriginalRowData(rowIndex: number): Record<string, unknown> | null;
   isNewRow(rowIndex: number): boolean;
   acknowledgeSave(rowIndex: number, savedData: Record<string, unknown>): void;
@@ -698,6 +708,11 @@ export declare class JHGrid {
   }): Promise<void>;
 
   addRow(rowData?: Record<string, unknown>, opts?: { index?: number }): number;
+  /**
+   * Inserts several rows as one undo step and one redraw. `index` places the first row and the
+   * rest follow it in order; omitted, they go to the end. Returns the index of each new row.
+   */
+  addRows(rows: Record<string, unknown>[], opts?: { index?: number }): number[];
   deleteRow(rowIndex: number, opts?: { permanent?: boolean }): void;
   undeleteRow(rowIndex: number): void;
   getNewRows(): Record<string, unknown>[];

@@ -29,3 +29,11 @@ the minimum version.
 
 Not supported at any version: Internet Explorer (11 or earlier) and legacy Edge; the
 script fails to parse.
+
+## Right-to-left layouts
+
+JHGrid has no RTL mode. It draws its cells on a canvas, where `direction: rtl` on an ancestor
+changes nothing, so under an RTL locale the columns keep their left-to-right order and the
+header, frozen bands, overlays and hit testing all stay as they are. Arabic, Hebrew and Persian
+*text* renders correctly inside a cell, and a column can be right-aligned with
+[`align: 'right'`](api.md#column-definition-reference); it is the layout that does not mirror.
