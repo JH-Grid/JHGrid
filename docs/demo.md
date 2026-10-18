@@ -41,7 +41,7 @@ new JHGrid({
 ```
 
 Point `fetchData` at your API instead of an array and the row count stops mattering at all — see
-[`fetchMeta`](api.md#fetchmeta) and [`fetchData`](api.md#fetchdata).
+[`fetchMeta`](data-source.md#fetchmeta) and [`fetchData`](data-source.md#fetchdata).
 
 ## Editing
 
@@ -66,8 +66,8 @@ new JHGrid({
 });
 ```
 
-See [Validation](api.md#validation-columndefsvalidation) and
-[Editor Options](api.md#editor-options-columndefseditoroptions).
+See [Validation](editing.md#validation-columndefsvalidation) and
+[Editor Options](editing.md#editor-options-columndefseditoroptions).
 
 ## Filtering
 
@@ -90,8 +90,8 @@ document.querySelector('#quick-filter').addEventListener('input', (e) => {
 });
 ```
 
-See [Set Filter / Quick Filter](api.md#set-filter--quick-filter) and
-[`setFilter` / `setSort`](api.md#field-based-filter--sort-setfilter--setsort) for filtering from code.
+See [Set Filter / Quick Filter](filtering-sorting.md#set-filter--quick-filter) and
+[`setFilter` / `setSort`](filtering-sorting.md#field-based-filter--sort-setfilter--setsort) for filtering from code.
 
 ## Frozen columns
 
@@ -119,7 +119,7 @@ new JHGrid({
 ```
 
 Users can also freeze a column from its header menu — see
-[Frozen Columns](api.md#frozen-columns-frozencols--frozencolsright).
+[Frozen Columns](columns.md#frozen-columns-frozencols--frozencolsright).
 
 ## Pinned rows
 
@@ -155,7 +155,7 @@ const [row] = grid.getSelectedRows();
 if (row != null) grid.pinRow(row, 'top');
 ```
 
-See [Pinned Rows](api.md#pinned-rows-pinnedtoprows--pinnedbottomrows--pinrow).
+See [Pinned Rows](rows.md#pinned-rows-pinnedtoprows--pinnedbottomrows--pinrow).
 
 ## Row selection
 
@@ -182,12 +182,12 @@ grid.getSelectedRows();      // [3, 4, 7] - row indices, in ascending order
 ```
 
 For the other pattern — a checkbox column with a tick-everything box in its header — see
-[Row Selection / Header Checkbox](api.md#row-selection-rowselection--header-checkbox).
+[Row Selection / Header Checkbox](selection.md#row-selection-rowselection--header-checkbox).
 
 ## Column types & renderers
 
 `columnDefs[i].type` picks a built-in editor/renderer pair (`dropdown`, `checkbox`, `date`, ...);
-`renderer` swaps in a different [`CellRenderers`](api.md#built-in-cell-renderers-cellrenderers) entry without changing the
+`renderer` swaps in a different [`CellRenderers`](renderers-editors.md#built-in-cell-renderers-cellrenderers) entry without changing the
 editor, e.g. formatting a plain number as currency.
 
 <div class="jhg-demo-card" id="jhg-demo-types"></div>
@@ -217,18 +217,20 @@ new JHGrid({
 
 The Joined column names its own `format`. Leave `format` out and the column follows the locale's
 date pattern instead, so the same stored `2026-03-14` reads `03/14/2026` under `en` and
-`2026/03/14` under `ja` — see [Date Columns](api.md#date-columns-type-date).
+`2026/03/14` under `ja` — see [Date Columns](cell-types.md#date-columns-type-date).
 
 Thirteen renderers ship built in (`progressBar`, `badge`, `checkmark`, `link`, `image`, …) and
 `registerCellRenderer()` adds your own — see
-[Built-in Cell Renderers](api.md#built-in-cell-renderers-cellrenderers) and
-[Column Types](api.md#column-types-date--richtext--image-and-custom-editorsrenderers).
+[Built-in Cell Renderers](renderers-editors.md#built-in-cell-renderers-cellrenderers) and
+[Column Types](renderers-editors.md#column-types-date--richtext--image-and-custom-editorsrenderers).
 
 ## Themes
 
-`theme` is a constructor-only option, so switching themes at runtime means rebuilding the grid:
-the select below `destroy()`s the current instance and constructs a new one with the chosen
-`theme` object — see [Themes](theming.md) for the full token reference.
+`setTheme(patch)` repaints a live grid in new colours: the select below hands the grid the dark
+token set and hands back the defaults for those same tokens, with no rebuild - unsaved edits, the
+selection and the scroll position all stay where they were. See
+[Changing the Theme at Runtime](theming.md#changing-the-theme-at-runtime-settheme--gettheme) and
+[Themes](theming.md) for the full token reference.
 
 <div class="jhg-demo-bar">
   <select id="jhg-demo-theme-select">
@@ -309,7 +311,7 @@ non-canvas parts (menus, panels, the pager) read.
      the bundle just built, and the published page falls through to the CDN. @latest resolves to the
      newest git tag; pin an exact tag instead if you copy this into a page of your own. */
   const CDN = 'https://cdn.jsdelivr.net/gh/JH-Grid/JHGrid@latest/dist/jhgrid.esm.js';
-  const { JHGrid, CellRenderers, registerCellRenderer } =
+  const { JHGrid, CellRenderers, registerCellRenderer, DEFAULT_THEME } =
     await import('/dist/jhgrid.esm.js').catch(() => import(CDN));
   const DEPTS  = ['Engineering', 'Sales', 'Marketing', 'Support', 'Design'];
   const GRADES = ['A', 'B', 'C', 'D'];
@@ -514,28 +516,26 @@ non-canvas parts (menus, panels, the pager) read.
     hoverRowBg: 'rgba(255,255,255,0.055)',  /* default wash is a black tint, invisible over dark rows */
   };
 
-  let themeGrid = null;
-  function buildThemeGrid(dark) {
-    themeGrid?.destroy();
-    themeGrid = new JHGrid({
-      container: '#jhg-demo-theme',
-      width: 560, height: 360,
-      editableCols: '*',   /* otherwise every column gets the default readonlyCellBg (#F5F5F5) tint,
-                              which the dark theme below doesn't override and would wash out on rowEven/rowOdd */
-      showRowNumbers: true,
-      rowSelection: 'multi',
-      data: makeRows(30),
-      theme: dark ? DARK_THEME : undefined,
-      columnDefs: [
-        { field: 'name',   label: 'Name',   width: 150 },
-        { field: 'dept',   label: 'Dept',   width: 140 },
-        { field: 'grade',  label: 'Grade',  width: 90 },
-        { field: 'salary', label: 'Salary', width: 130, align: 'right', renderer: CellRenderers.currency({ locale: 'en-US', currency: 'USD' }) },
-      ],
-    });
-  }
-  buildThemeGrid(false);
+  /* setTheme() replaces the keys it is given, so switching back needs the defaults for those
+     same keys - otherwise the dark tokens would stay behind. */
+  const LIGHT_THEME = Object.fromEntries(Object.keys(DARK_THEME).map((k) => [k, DEFAULT_THEME[k]]));
+
+  const themeGrid = new JHGrid({
+    container: '#jhg-demo-theme',
+    width: 560, height: 360,
+    editableCols: '*',   /* otherwise every column gets the default readonlyCellBg (#F5F5F5) tint,
+                            which the dark theme below doesn't override and would wash out on rowEven/rowOdd */
+    showRowNumbers: true,
+    rowSelection: 'multi',
+    data: makeRows(30),
+    columnDefs: [
+      { field: 'name',   label: 'Name',   width: 150 },
+      { field: 'dept',   label: 'Dept',   width: 140 },
+      { field: 'grade',  label: 'Grade',  width: 90 },
+      { field: 'salary', label: 'Salary', width: 130, align: 'right', renderer: CellRenderers.currency({ locale: 'en-US', currency: 'USD' }) },
+    ],
+  });
   document.getElementById('jhg-demo-theme-select').addEventListener('change', (e) => {
-    buildThemeGrid(e.target.value === 'dark');
+    themeGrid.setTheme(e.target.value === 'dark' ? DARK_THEME : LIGHT_THEME);
   });
 </script>

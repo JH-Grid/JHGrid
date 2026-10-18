@@ -132,3 +132,58 @@ td {
 .toc-group.expanded > .toc-children {
   display: block;
 }
+
+// Code: the theme draws both an inline `name` and a whole block on white, so neither stands out
+// from the prose around it, and `code { font-size: 0.75em }` shrinks a name to 12px in a sentence
+// and to 10.5px inside a table - the smallest text on pages that are mostly API names.
+//
+// Inline code keeps the usual light chip (GitHub/MDN convention): a dark chip inside a sentence
+// speckles the paragraph. A block, which the eye treats as a figure, goes on a dark panel so the
+// syntax colours separate and the block's edges are obvious.
+:not(pre, figure) > code {
+  font-size: 0.8125rem;
+  color: $grey-dk-250;
+  background-color: #f3f4f7;
+  border-color: #e2e1e6;
+}
+
+.main-content {
+  div.highlighter-rouge,
+  figure.highlight,
+  pre.highlight {
+    background-color: #1b1f27;
+    border: 0;
+  }
+
+  div.highlighter-rouge pre.highlight code,
+  figure.highlight pre code {
+    font-size: 0.8125rem;   // 13px: a block is read line by line, not glanced at
+  }
+
+  div.highlighter-rouge pre.highlight,
+  div.highlighter-rouge .table-wrapper,
+  figure.highlight pre {
+    background-color: transparent;
+  }
+
+  // Rouge tokens on the dark panel. Every colour below sits at 5:1 or better on #1b1f27.
+  .highlight {
+    color: #e7e7ea;
+    background-color: #1b1f27;   // the theme paints this inner wrapper white over the panel
+
+    .n, .nx, .nl, .ni, .nd, .ne, .nj, .py, .vm { color: #e7e7ea; }
+    .dl, .sa { color: #a5d6a7; }
+    .c, .c1, .cm, .cs, .cd { color: #8c96a3; font-style: italic; }
+    .k, .kc, .kd, .kn, .kp, .kr, .kt { color: #c792ea; }
+    .s, .s1, .s2, .sb, .sc, .sd, .se, .sh, .si, .sx, .sr, .ss { color: #a5d6a7; }
+    .m, .mi, .mf, .mh, .mo, .mb, .il { color: #f7a06c; }
+    .nb, .bp, .nf, .fm { color: #82aaff; }
+    .nt { color: #ff6b84; }
+    .na, .nv, .vi, .vg, .vc { color: #ffcb6b; }
+    .nc, .nn, .no { color: #ffd98a; }
+    .o, .ow, .p, .pi { color: #89ddff; }
+    .err { color: #ff6b84; background-color: transparent; }
+    .gi { color: #a5d6a7; }
+    .gd { color: #ff6b84; }
+  }
+}

@@ -124,6 +124,9 @@ export interface CellDecoratorArgs extends Omit<CellRendererArgs, 'text'> {
   field: string;
 }
 
+export type NumberRounding = 'ceil' | 'floor' | 'expand' | 'trunc'
+  | 'halfCeil' | 'halfFloor' | 'halfExpand' | 'halfEven' | 'halfTrunc';
+
 export declare const CellRenderers: {
   progressBar(opts?: { max?: number; showLabel?: boolean }): CellRendererFn;
   badge(opts?: { colorMap?: Record<string, { bg?: string; fg?: string }> }): CellRendererFn;
@@ -134,9 +137,26 @@ export declare const CellRenderers: {
     size?: number | { width?: number; height?: number };
     align?: 'center' | 'left' | 'right';
   }): CellRendererFn;
-  number(opts?: { locale?: string; decimals?: number }): CellRendererFn;
+  number(opts?: {
+    locale?:   string;
+    decimals?: number;
+    /** Intl rounding mode. Ignored, with one console warning, where Intl.NumberFormat v3 is missing. */
+    rounding?: NumberRounding;
+    /** `'parens'` writes a negative as `(1,234)`. Default `'minus'`. */
+    negative?: 'minus' | 'parens';
+    /** Text colour for a negative value. The theme's cell text colour otherwise. */
+    negativeColor?: string;
+  }): CellRendererFn;
   date(opts?: { format?: string; locale?: string; dateStyle?: 'full' | 'long' | 'medium' | 'short'; align?: 'left' | 'center' | 'right' }): CellRendererFn;
-  currency(opts?: { locale?: string; currency?: string }): CellRendererFn;
+  currency(opts?: {
+    locale?:   string;
+    currency?: string;
+    /** Fraction digits, overriding the currency's own default (KRW 0, USD 2). */
+    decimals?: number;
+    rounding?: NumberRounding;
+    negative?: 'minus' | 'parens';
+    negativeColor?: string;
+  }): CellRendererFn;
   link(opts?: {
     color?:      string;
     mutedColor?: string;
@@ -147,6 +167,12 @@ export declare const CellRenderers: {
   dropdown(opts?: { placeholder?: string }): CellRendererFn;
   multiselect(opts?: { placeholder?: string }): CellRendererFn;
   checkbox(opts?: { checkedColor?: string; size?: number }): CellRendererFn;
+  /** Radio circles drawn in the cell; the labels drop out when the column is too narrow for them. */
+  radio(opts?: {
+    options?: DropdownOption[] | ((rowData: Record<string, unknown>) => DropdownOption[]);
+    align?: 'left' | 'center' | 'right';
+    checkedColor?: string;
+  }): CellRendererFn;
   button(opts?: {
     label?:    string | ((rowData: Record<string, unknown> | null, rowIndex: number) => string | null);
     disabled?: boolean | ((rowData: Record<string, unknown> | null, rowIndex: number) => boolean);
@@ -228,6 +254,11 @@ export interface CellEditorEl {
 export type DropdownOption = string | { value: string; label?: string };
 
 export interface ColumnDef {
+  /**
+   * Turns this column's text back into the type the host wants, at the save boundary only:
+   * `getChanges()` and `getEdits({ typed: true })` run it. The grid itself keeps working in text.
+   */
+  parse?: (value: string, rowData: Record<string, unknown> | null, field: string) => unknown;
   field:        string;
   label?:       string;
   align?:       'left' | 'center' | 'right';
@@ -235,7 +266,7 @@ export interface ColumnDef {
   group?:       string | string[];
   width?:       number;
   renderer?:    string | CellRendererFn;
-  type?:        'text' | 'dropdown' | 'multiselect' | 'checkbox' | 'button' | 'date' | 'richtext' | 'image';
+  type?:        'text' | 'dropdown' | 'multiselect' | 'checkbox' | 'radio' | 'button' | 'date' | 'richtext' | 'image';
   /** `type: 'date'`: a pattern of YYYY/YY/MM/DD/HH/mm/ss, or 'locale'. Defaults to the locale's own
    *  pattern (`i18n.dateFormat`): 'MM/DD/YYYY' for en, 'YYYY-MM-DD' for ko, 'YYYY/MM/DD' for ja/zh. */
   format?:      string;
@@ -310,6 +341,8 @@ export interface GridState {
   columns:       string[];
   columnWidths:  Record<string, number>;
   hiddenColumns: string[];
+  /** Rows the user hid, by their server index and the rowKey value they were hidden by. */
+  hiddenRows: Array<{ index: number; key: unknown }>;
   frozenCols:    number;
   frozenColsRight: number;
   sorts:         { field: string; dir: 'asc' | 'desc' }[];
@@ -319,6 +352,11 @@ export interface GridState {
   headerCheckboxState: Record<string, boolean>;
   localColumns: (Omit<ColumnDef, 'field'> & { field: string })[];
   deletedColumns: string[];
+  /**
+   * Columns the user resized by hand. With `stretchColumns` on they keep that width instead of
+   * taking a share of the leftover space; with it off the list is informational.
+   */
+  userSizedColumns: string[];
   rowChanges: {
     added:   { anchor: number; data: Record<string, unknown>; edits: Record<string, string> }[];
     removed: number[];
@@ -331,6 +369,8 @@ export interface GridState {
 
 export interface KeyboardShortcutsOptions {
   delete?: boolean;
+  /** `Ctrl+X`: copies the selected range and then empties its editable cells, as one undo step. */
+  cut?: boolean;
   undo?: boolean;
   redo?: boolean;
 }
@@ -413,11 +453,14 @@ export interface GridI18n {
   rowPinTop?:            string;
   rowPinBottom?:         string;
   rowUnpin?:             string;
+  rowHide?:              string;
+  rowShowAll?:           string;
   editAriaLabel?:       (col: string, row: number) => string;
   announceCell?:         (row: number, col: string, value: string) => string;
   columnHeaderAnnounce?: (col: string) => string;
   rowHeaderAnnounce?:    (row: number) => string;
   rowReorderAnnounce?:   (from: number, to: number) => string;
+  rowDragOutAnnounce?:   (from: number, to: number) => string;
   sortAppliedAnnounce?:      (col: string, dir: 'asc' | 'desc') => string;
   filterAppliedAnnounce?:    (col: string) => string;
   filterClearedAnnounce?:    (col: string) => string;
@@ -449,6 +492,43 @@ export declare const JA_I18N: Required<GridI18n>;
 export declare const ZH_I18N: Required<GridI18n>;
 
 
+export interface RowRect {
+  /** Top of the row's cells, relative to the grid element. */
+  top:    number;
+  /** Height of the cells, without any reserved strip. */
+  height: number;
+  /** Top of the reserved strip: `top + height`. */
+  reservedTop:    number;
+  /** Height of the reserved strip, `0` when the row has none. */
+  reservedHeight: number;
+  /** Left edge of the scrollable band, past the row numbers and frozen columns. */
+  left:  number;
+  /** Width of that band. */
+  width: number;
+  /** Whether any part of the row (cells or strip) is inside the scrollable viewport. */
+  visible: boolean;
+}
+
+export interface RowDragOutEvent {
+  /** The grid the row is leaving. */
+  grid:     JHGrid;
+  /** The grid it is going to. */
+  toGrid:   JHGrid;
+  rowIndex: number;
+  rowData:  Record<string, unknown>;
+  /** The row index it will take in `toGrid`. */
+  toIndex:  number;
+}
+
+export interface RowDropInEvent {
+  /** The grid receiving the row. */
+  grid:     JHGrid;
+  /** The grid it came from. */
+  fromGrid: JHGrid;
+  rowData:  Record<string, unknown>;
+  toIndex:  number;
+}
+
 export interface PaginationOptions {
   enabled:   boolean;
   pageSize?: number;
@@ -477,6 +557,28 @@ export interface JHGridOptions {
   scrollEaseMs?:    number;
   columnSlideMs?:   number;
   wrapHeader?:      boolean;
+  /**
+   * Wrap cell text onto as many lines as the column's width needs, instead of clipping it with an
+   * ellipsis. Explicit line breaks in a value still break lines. A word wider than the column is
+   * broken across lines, so text without spaces (Korean, Japanese, Chinese) wraps too.
+   *
+   * The row height does not change on its own: pair it with `autoRowHeight`, or the lines past the
+   * first are clipped at the row's bottom edge.
+   */
+  /** A grand total row pinned above or below the data. See the Rows guide. */
+  summaryRow?:      SummaryRowOptions | boolean;
+  wrapCells?:       boolean;
+  /**
+   * Give every loaded row the height its tallest cell needs - wrapped lines when `wrapCells` is on,
+   * explicit line breaks otherwise. Editing a cell re-fits its row. A row the user has resized by
+   * hand keeps their height.
+   *
+   * Up to 5,000 rows every loaded row is measured, so the scrollbar is exact. Past that the rows
+   * around the viewport are measured instead and the rest keep the default height, which is what
+   * keeps the row-height model sparse - the trade-off is a scrollbar that shifts a little as taller
+   * rows come into view.
+   */
+  autoRowHeight?:   boolean;
   scrollbarSize?:   number;
   chunkSize?:       number;
   maxCachedChunks?: number;
@@ -487,12 +589,22 @@ export interface JHGridOptions {
   pinnedBottomRows?: Record<string, unknown>[];
   keyboardShortcuts?: KeyboardShortcutsOptions;
   rowReorder?:      boolean;
+  /**
+   * A name shared with other grids on the page. Rows can be dragged by the row-number gutter from
+   * any grid carrying this name onto any other, which adds the row there with `addRow()` and
+   * deletes it here with `deleteRow()` - so each half of the move shows up in that grid's own
+   * `getChanges()`. `onRowDragOut` and `onRowDropIn` can veto or rewrite the row.
+   *
+   * Dragging out does not need `rowReorder`: only the one row travels, not the order. Set both
+   * when the same grid should also reorder within itself.
+   */
+  rowDragGroup?:    string;
   fullScanConcurrency?: number;
   fullScanPageSize?:    number;
   editableCols?:    string[] | '*';
   rowKey?:          string;
   deleteMode?:      'mark' | 'permanent';
-  rowContextMenuItems?: false | ('row-insert-above' | 'row-insert-below' | 'row-insert-top' | 'row-insert-bottom' | 'row-delete' | 'row-pin')[];
+  rowContextMenuItems?: false | ('row-insert-above' | 'row-insert-below' | 'row-insert-top' | 'row-insert-bottom' | 'row-delete' | 'row-pin' | 'row-hide')[];
   rowPinButton?: boolean | PinnedRowPosition;
   onRowPinToggle?: (e: {
     pinned:   boolean;
@@ -506,16 +618,37 @@ export interface JHGridOptions {
   cellContextMenuExtraItems?: (ctx: CellContextMenuItemContext) => CellContextMenuItem[] | null | undefined;
   columnDefs?:      ColumnDef[];
   headerRows?:      HeaderRowDef[][];
+  /**
+   * Keeps header groups whole while the user drags a column: a grouped column can only move within
+   * its own group, and a column from outside cannot be dropped into the middle of one. Off by
+   * default, where a drag may split a group apart.
+   */
+  lockHeaderGroups?: boolean;
   columnLetterHeader?: boolean;
   showRowNumbers?:  boolean;
   rowNumberWidth?:  number;
   responsive?:      boolean;
+  /**
+   * What to do with the space left over when the columns do not fill the grid. `'last'` gives it
+   * to the last scrollable column, `'all'` splits it between the columns in proportion to their
+   * widths, `'none'` (the default) leaves it blank. Frozen columns and columns the user has
+   * resized by hand keep their own width either way. With it on, `getState().columnWidths`
+   * reports those own widths rather than the stretched ones, so a layout saved on a wide screen
+   * restores correctly on a narrow one.
+   */
+  stretchColumns?:  'none' | 'last' | 'all';
   rowSelection?:    'none' | 'single' | 'multi';
   hiddenColumns?:   string[];
   theme?:           GridTheme;
   locale?:          string;
   i18n?:            GridI18n;
   ariaLabel?:       string;
+  /**
+   * Mirrors the rows on screen into real DOM, so a screen reader can walk the table with its own
+   * keys instead of only hearing the active cell. On by default; `false` turns it off, and
+   * `{ maxCells }` (default 2000) is where a very wide grid stops paying for it.
+   */
+  ariaRowMirror?:   boolean | { maxCells?: number };
   /**
    * Answers the "unsaved edits will be discarded" prompt that a filter, sort or quick-filter
    * change raises, in place of `window.confirm`. Return `true` to go ahead and discard them.
@@ -536,6 +669,17 @@ export interface JHGridOptions {
   onColumnVisibilityChange?: (hiddenColumns: string[]) => void;
   onRowHeightResize?: (rowIndex: number, height: number) => void;
   onRowReorder?:    (fromIndex: number, toIndex: number, rowData: Record<string, unknown>) => void;
+  /**
+   * A row of this grid was dropped on another grid of the same `rowDragGroup`. Return `false` to
+   * call the move off; the row stays where it is and the other grid gets nothing.
+   */
+  onRowDragOut?:    (e: RowDragOutEvent) => boolean | void;
+  /**
+   * A row from another grid of the same `rowDragGroup` was dropped on this one. Return `false` to
+   * refuse it, or a row object to insert that object instead of the one that arrived - which is
+   * where two grids with different columns are reconciled.
+   */
+  onRowDropIn?:     (e: RowDropInEvent) => boolean | Record<string, unknown> | void;
   onRowSelect?:     (selectedRows: number[]) => void;
   onPageChange?:    (page: number, pageCount: number) => void;
   onPageSizeChange?: (pageSize: number) => void;
@@ -571,6 +715,83 @@ export type JHGridRuntimeOptions = Partial<Pick<JHGridOptions,
   | 'rowPinButton' | 'onRowPinToggle' | 'editableCols'
 >>;
 
+/**
+ * Every event `on()` / `off()` take, and the arguments its handlers are called with. Each one is
+ * the constructor callback of the same name without the `on` prefix, so `onCellChange` is the
+ * event `'cellChange'` and both receive the same thing.
+ */
+export interface JHGridEventMap {
+  cellChange: [params: { row: number; field: string; newValue: string; oldValue: string }];
+  cellClick: [rowIndex: number, rowData: Record<string, unknown> | null, field: string];
+  cellDoubleClick: [rowIndex: number, rowData: Record<string, unknown> | null, field: string];
+  selectionChange: [sel: CellSelection | null];
+  sort: [sorts: { field: string; dir: 'asc' | 'desc' }[] | null];
+  filter: [filters: Record<string, string | string[]>];
+  columnReorder: [columns: string[]];
+  columnResize: [field: string, width: number];
+  columnVisibilityChange: [hiddenColumns: string[]];
+  rowHeightResize: [rowIndex: number, height: number];
+  rowReorder: [fromIndex: number, toIndex: number, rowData: Record<string, unknown>];
+  rowSelect: [selectedRows: number[]];
+  rowPinToggle: [e: {
+    pinned:   boolean;
+    rowIndex: number;
+    position: PinnedRowPosition;
+    rowData:  Record<string, unknown> | null;
+    handle:   PinnedRowHandle;
+  }];
+  pageChange: [page: number, pageCount: number];
+  pageSizeChange: [pageSize: number];
+  render: [];
+  chunkError: [err: Error];
+  validationError: [row: number, field: string, message: string | null];
+  headerCheckboxChange: [field: string, checked: boolean];
+}
+
+// Summary row
+
+export type SummaryAggregate =
+  | 'sum' | 'avg' | 'min' | 'max' | 'count'
+  | ((rows: Record<string, unknown>[], field: string) => string | number | null);
+
+export interface SummaryRowOptions {
+  /** Which band the total row is pinned to. Default `'bottom'`. */
+  position?: 'top' | 'bottom' | 'both';
+  /** One aggregate per column. At least one is required. */
+  aggregates: Record<string, SummaryAggregate>;
+  /** Text put in `labelField`. Defaults to the `locale`'s own word for a total. */
+  label?: string;
+  /** Column the label goes in. Default: the first column. */
+  labelField?: string;
+  /** Row background. `null` leaves the row unpainted. Default `'#f1f5f9'`. */
+  background?: string | null;
+  /** Past this many rows nothing is totalled, and `capped` says so. Default 200000. */
+  maxRows?: number;
+  /**
+   * The records to total, instead of the rows the grid is showing. For a host that keeps its own
+   * rows and shows a shaped view of them, where the total is about
+   * the records, not about what is on screen.
+   */
+  rows?: () => Record<string, unknown>[] | null;
+  /** Leaves a row out of the total: a header row that already shows a subtotal, for instance. */
+  excludeRow?: (rowData: Record<string, unknown>, rowIndex: number) => boolean;
+  /** Total the loaded rows even when some rows of a server-backed grid are missing. Default false. */
+  allowPartial?: boolean;
+  locale?: string;
+}
+
+export interface SummaryStats {
+  /** Rows the aggregates actually ran over. */
+  rows: number;
+  /** Rows the grid counts but has not loaded. */
+  missing: number;
+  /** `maxRows` was exceeded, so nothing was totalled. */
+  capped: boolean;
+  /** `'computed'`, `'host'` after `setSummaryValues()`, or `'blank'` when the row was left empty. */
+  source: 'computed' | 'host' | 'blank';
+}
+
+
 export declare class JHGrid {
   static use(plugin: JHGridPlugin): void;
 
@@ -582,6 +803,12 @@ export declare class JHGrid {
 
   setOptions(patch: JHGridRuntimeOptions): void;
 
+  /**
+   * Points the grid at a different data source and starts over, exactly as refresh() does: unsaved
+   * edits, filters, sorts, selection and column state are dropped, because the new source need not
+   * even have the same columns. Takes the same shapes the constructor takes.
+   */
+  setDataSource(source: Pick<JHGridOptions, "fetchMeta" | "fetchData"> | Pick<JHGridOptions, "fetchPage"> | Pick<JHGridOptions, "data">): void;
   refresh(): void;
 
   reloadData(opts?: { keepScroll?: boolean }): Promise<void>;
@@ -607,7 +834,18 @@ export declare class JHGrid {
   setPageSize(pageSize: number): void;
   getPageSize(): number;
 
-  getEdits(): Record<number, Record<string, string>>;
+  /**
+   * The unsaved edits, keyed by row index. `{ byKey: true }` keys them by the `rowKey` value
+   * instead, which survives sorts, filters and rows inserted above; `{ typed: true }` runs each
+   * column's `parse` (or restores the type the original value had) instead of handing back text.
+   */
+  getEdits(opts?: { byKey?: boolean; typed?: boolean }): Record<string | number, Record<string, unknown>>;
+  /** The row index a `rowKey` value sits at, or -1. O(loaded rows). */
+  getRowIndexByKey(key: unknown): number;
+  /** The row a `rowKey` value names, or null when the grid does not hold it. */
+  getRowDataByKey(key: unknown): Record<string, unknown> | null;
+  /** setCellValue() for a row named by its `rowKey` value. False when the row is not there. */
+  setCellValueByKey(key: unknown, field: string, value: string): boolean;
   /** Throws when the `rowKey` option is not set, since changed rows cannot be identified without it. */
   getChanges(): {
     updated: Record<string, unknown>[];
@@ -615,6 +853,19 @@ export declare class JHGrid {
     deleted: unknown[];
   };
   acknowledgeChanges(opts?: { keepScroll?: boolean }): Promise<void>;
+  /**
+   * Throws one row's unsaved edits away, putting its cells back to the values the data source gave
+   * and clearing their validation marks. One undo step, so `Ctrl+Z` brings them back. Returns
+   * false when that row had no edits. Delete marks are left alone (`undeleteRow()` clears those),
+   * and a row added with `addRow()` goes back to the values it was added with.
+   */
+  /**
+   * One row's unsaved edits as before/after pairs, or null when it has none:
+   * `{ qty: { before: '10', after: '12' } }`. `typed` runs the column's own `parse`, the same
+   * way `getEdits({ typed: true })` does, on both sides of the pair.
+   */
+  getRowChanges(rowIndex: number, opts?: { typed?: boolean }): Record<string, { before: unknown; after: unknown }> | null;
+  revertRow(rowIndex: number): boolean;
   clearEdits(): void;
   /**
    * Writes a cell edit from code. Unlike user editing this ignores `editableCols`,
@@ -653,6 +904,19 @@ export declare class JHGrid {
   removeSort(field: string): void;
   clearSort(): void;
 
+  /**
+   * Multi-column sort. The grid never sorts rows itself: the whole key list goes to
+   * `fetchMeta`/`fetchData` in priority order and the host turns it into its own ORDER BY.
+   * `setSorts`/`addSort`/`moveSort` apply through `setState`, so they share its unsaved-edit
+   * confirmation and return its Promise. From the UI, Shift+click Asc/Desc in a header's filter
+   * panel appends a key instead of replacing the list.
+   */
+  getSorts(): { field: string; dir: 'asc' | 'desc' }[];
+  setSorts(list: { field: string; dir?: 'asc' | 'desc' }[]): Promise<void>;
+  addSort(field: string, dir?: 'asc' | 'desc'): Promise<void>;
+  moveSort(field: string, priority: number): Promise<void>;
+  clearSorts(): Promise<void>;
+
   getRowData(rowIndex: number): Record<string, unknown> | null;
   /** One cell's current value, unsaved edits applied. `null` when the row is not loaded. */
   getCellValue(rowIndex: number, field: string): unknown;
@@ -668,7 +932,42 @@ export declare class JHGrid {
   setRowHeight(height: number): void;
   setRowHeight(rowIndex: number, height: number): void;
   getRowHeight(rowIndex: number): number;
+  /**
+   * Keeps `height` pixels under a row's cells that the grid lays out but never draws in, and that
+   * clicks pass through: the row grows, everything below it moves down, and the strip is left for
+   * whatever the host puts over it (an expanded detail panel). `0` gives the space back.
+   *
+   * Separate from `setRowHeight()`, which sets how tall the row's own cells are. A row can have
+   * both, and `autoRowHeight` keeps measuring the cells as if the strip were not there.
+   */
+  reserveRowSpace(rowIndex: number, height: number): void;
+  /** How much space that row has reserved, in pixels. `0` when it has none. */
+  getReservedRowSpace(rowIndex: number): number;
+  /** The rows that currently have space reserved, in no particular order. */
+  getReservedRows(): number[];
+  /**
+   * Where a row sits on screen right now, in pixels relative to the grid's own element. Paired
+   * with `onRender`, this is what holds a panel over the strip `reserveRowSpace()` kept: the grid
+   * redraws on scroll, resize, sort and row-height changes, and this says where the strip landed.
+   *
+   * `left` starts after the row numbers and the frozen band. Null for an index the grid does not
+   * have, and for pinned rows, which cannot reserve space.
+   */
+  getRowRect(rowIndex: number): RowRect | null;
+  /**
+   * The scrollable band of the grid, between the header and the pinned rows and scrollbars, in
+   * pixels relative to the grid's own element. Clip DOM held over the grid to this.
+   */
+  getViewportRect(): { top: number; left: number; width: number; height: number };
   resetRowHeight(rowIndex: number): void;
+  /**
+   * Changes the theme of a live grid: the keys given replace theirs, the rest stay. Open panels and
+   * menus close (they are rebuilt in the new colours on the next open); the selection, the scroll
+   * position and unsaved edits are kept.
+   */
+  setTheme(patch: GridTheme): void;
+  /** The theme the grid is drawing with, as a copy. */
+  getTheme(): Required<GridTheme>;
 
   pinRow(rowIndex: number, position?: PinnedRowPosition): PinnedRowHandle | null;
   unpinRow(handle: PinnedRowHandle): boolean;
@@ -689,7 +988,16 @@ export declare class JHGrid {
   getDeletedColumns(): string[];
   commitColumns(fields?: string | string[]): void;
 
+  /**
+   * A snapshot of the view. `rowChanges` (every unsaved edit, added row and delete mark) is part
+   * of it by default, which is what makes the snapshot restorable and what makes it large - with
+   * 200,000 edited cells it stringifies to ~5.4MB, past the usual `sessionStorage` limit, against
+   * under a kilobyte for the view settings alone. Pass `{ rowChanges: false }` to leave the
+   * editing session out; `setState()` accepts either shape.
+   */
   getState(): GridState;
+  getState(opts: { rowChanges: false }): Omit<GridState, 'rowChanges'>;
+  getState(opts: { rowChanges?: boolean }): GridState | Omit<GridState, 'rowChanges'>;
   setState(state: Partial<GridState>): Promise<void>;
 
   /**
@@ -713,15 +1021,73 @@ export declare class JHGrid {
    * rest follow it in order; omitted, they go to the end. Returns the index of each new row.
    */
   addRows(rows: Record<string, unknown>[], opts?: { index?: number }): number[];
+  /**
+   * Moves a row the way a drag on the row-number gutter does: `to` is where the row ends up, the
+   * new order shows at once, `onRowReorder` fires so the host can save it, and the state kept by
+   * row index (edits, selection, undo) is discarded. Returns false when nothing moved.
+   *
+   * Needs `rowReorder: true`. Awaiting the call covers the row scan that option starts, so the
+   * first move on a server-backed grid takes as long as that scan. Rows added with addRow() and
+   * pinned rows cannot be moved, as with the drag.
+   */
+  /**
+   * Runs several structural changes as one: one redraw and one undo step for the lot. Adding or
+   * deleting columns in bulk is what this is for - each call otherwise snapshots the whole
+   * structure, which turns a few hundred columns into seconds of work.
+   */
+  batchStructural<T>(fn: () => T): T;
+  moveRow(from: number, to: number): Promise<boolean>;
   deleteRow(rowIndex: number, opts?: { permanent?: boolean }): void;
   undeleteRow(rowIndex: number): void;
   getNewRows(): Record<string, unknown>[];
   getDeletedRows(): number[];
   getRemovedRows(): number[];
 
+  /**
+   * Takes the row out of the view without deleting it. Hidden rows leave every row index, every
+   * export and every total, exactly as a permanent delete does, and `showRow` / `showAllRows`
+   * bring them back. A row added in the grid and not saved yet cannot be hidden.
+   */
+  hideRow(rowIndex: number): boolean;
+  /** Hides several rows as one undo step. Returns how many were hidden. */
+  hideRows(rowIndexes: number[]): number;
+  /** Shows one hidden row again, by the server index getHiddenRows() reports. */
+  showRow(serverIndex: number): boolean;
+  /** Shows every hidden row. Returns how many came back. */
+  showAllRows(): number;
+  getHiddenRows(): Array<{ index: number; key: unknown }>;
+  isRowHidden(serverIndex: number): boolean;
+
   /** Does not fire `onHeaderCheckboxChange`; that callback reports user clicks only. */
   setHeaderCheckbox(field: string, checked: boolean): void;
   getHeaderCheckbox(field: string): boolean;
+
+  /**
+   * Adds a handler for an event, which receives exactly what the matching constructor callback
+   * receives (`on('cellChange', …)` for `onCellChange`). An event can have any number of handlers;
+   * the constructor's own runs first. Returns a function that removes this handler again.
+   *
+   * Subscribing the same function twice to one event replaces the first subscription rather than
+   * running it twice. A handler that throws is logged and does not stop the others.
+   */
+  on<K extends keyof JHGridEventMap>(
+    event: K,
+    handler: (...args: JHGridEventMap[K]) => void,
+    opts?: { once?: boolean },
+  ): () => void;
+  /** Removes one handler, or every handler of that event when called without one. */
+  off<K extends keyof JHGridEventMap>(event: K, handler?: (...args: JHGridEventMap[K]) => void): boolean;
+  /** How many handlers an event has, not counting the constructor's own callback. */
+  listenerCount(event: keyof JHGridEventMap): number;
+
+  // ---- summary row (opts.summaryRow) --------------------------------------
+  getSummaryValues(): Record<string, string | number | null> | null;
+  getSummaryStats(): SummaryStats | null;
+  /** The row index the summary row sits at, or -1 while it is not there. */
+  getSummaryRowIndex(position?: 'top' | 'bottom'): number;
+  refreshSummary(): void;
+  /** Host-supplied totals, for a server that totals the whole table itself. `null` computes again. */
+  setSummaryValues(values: Record<string, string | number | null> | null): void;
 
   destroy(): void;
 }

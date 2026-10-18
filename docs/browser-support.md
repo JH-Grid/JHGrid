@@ -30,6 +30,12 @@ feature-detected with a fallback (square-corner rendering, non-responsive layout
 high-contrast auto-switch, respectively); they degrade gracefully and do **not** raise
 the minimum version.
 
+One option is newer than this floor: the `rounding` mode of the `number()` and `currency()`
+renderers comes from `Intl.NumberFormat` v3 (Chrome/Edge 106, Firefox 116, Safari 15.4). Where
+it is missing the renderer says so in the console once and draws with the default `halfExpand`
+rounding, so a column keeps working - it just rounds the ordinary way. Everything else in
+[Money columns](renderers-editors.md#money-columns-rounding-and-negatives) works at the floor above.
+
 Not supported at any version: Internet Explorer (11 or earlier) and legacy Edge; the
 script fails to parse.
 
@@ -39,4 +45,4 @@ JHGrid has no RTL mode. It draws its cells on a canvas, where `direction: rtl` o
 changes nothing, so under an RTL locale the columns keep their left-to-right order and the
 header, frozen bands, overlays and hit testing all stay as they are. Arabic, Hebrew and Persian
 *text* renders correctly inside a cell, and a column can be right-aligned with
-[`align: 'right'`](api.md#column-definition-reference); it is the layout that does not mirror.
+[`align: 'right'`](reference-options.md#column-definition-reference); it is the layout that does not mirror.

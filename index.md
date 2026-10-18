@@ -9,15 +9,27 @@ description: JHGrid is a canvas-based JavaScript data grid (datagrid) for large 
 Canvas-based data grid with 2D virtualization, built-in editing, filtering and undo/redo, and zero runtime dependencies.
 
 See [README](https://github.com/JH-Grid/JHGrid#readme) for installation and a quick start example.
-This site is the full API/theming/interaction reference; use the sidebar to browse.
 
-## Where to start
+## Quick access
 
-- **[Getting Started](docs/getting-started)**: what a grid needs, the decisions to make up front, framework setup
-- **[Live Demo](docs/demo)**: 1 million-row scroll performance, editing, filtering, frozen columns, pinned rows, row selection, column types and theming, running in your browser
-- **[API Reference](docs/api)**: constructor options, data source interface, column types and editors, validation, pagination, all public methods, text reference
-- **[Theming](docs/theming)**: the theme object, CSS custom properties, canvas motion
-- **[Interaction Reference](docs/interaction)**: mouse and keyboard behavior
+- **[Getting Started](docs/getting-started)**: what a grid needs, the decisions to make up front, and a troubleshooting table
+- **[Live Demo](docs/demo)**: a million rows scrolling, editing, filtering, frozen columns, pinned rows, selection, cell types and themes, in your browser
+- **[Features](docs/features)**: every feature and the guide that covers it
+- **[Options](docs/reference-options)**: every constructor option with its type and default
+- **[Methods](docs/reference-methods)**: every public method and where it is documented
+
+## Guides
+
+- **[Data Source](docs/data-source)**: `fetchMeta`/`fetchData`, `fetchPage`, or a plain in-memory array
+- **[Columns](docs/columns)** and **[Rows](docs/rows)**: add, delete, hide, size, freeze, pin, reorder
+- **[Selection](docs/selection)**, **[Editing](docs/editing)**, **[Cell Types](docs/cell-types)**, **[Renderers & Custom Editors](docs/renderers-editors)**
+- **[Filtering & Sorting](docs/filtering-sorting)**, **[Pagination](docs/pagination)**, **[Context Menus](docs/context-menus)**
+- **[State & Saving](docs/state-and-saving)**, **[Export & Print](docs/export)**, **[Localization](docs/i18n)**
+- **[Themes](docs/theming)** and **[Interaction](docs/interaction)**: styling, and every mouse and keyboard behaviour
+
+## Around the grid
+
 - **[Spring Boot Integration](docs/integration)**: backend API shape, SQL paging, sorting, filtering and saving
 - **[Architecture](docs/architecture)**: internal structure, virtual rendering flow
 - **[Browser Support](docs/browser-support)**: minimum versions and what sets them
+- **[Changelog](docs/changelog)**: every release, newest first, and what an upgrade needs

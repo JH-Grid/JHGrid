@@ -1,6 +1,7 @@
 ---
 title: Spring Boot Integration
-nav_order: 7
+parent: Guides
+nav_order: 2
 description: Connect the JHGrid data grid to a Spring Boot backend - REST API shape, SQL paging, server-side sorting and filtering, and saving edited rows.
 ---
 
@@ -209,13 +210,13 @@ above treats a missing state as "no conditions". An endpoint that ignores `state
 works, but the grid then never filters or sorts, and its total is always the unfiltered one.
 
 For a backend that already returns a page and the total in one query (a `COUNT(*) OVER()` next to
-the rows, say), use [`fetchPage`](api.md#fetchpage-single-callback-alternative) and one endpoint
+the rows, say), use [`fetchPage`](data-source.md#fetchpage-single-callback-alternative) and one endpoint
 instead of two.
 
 ## Saving what the user changed
 
 Edits, added rows and deletions stay in the browser until you send them. Set `rowKey: 'id'` (or
-whatever column is the primary key) on the grid, and [`getChanges()`](api.md#batch-save-rowkey--getchanges--acknowledgechanges)
+whatever column is the primary key) on the grid, and [`getChanges()`](state-and-saving.md#batch-save-rowkey--getchanges--acknowledgechanges)
 gives back exactly the three arrays a save endpoint needs, keyed by that column instead of by
 row position:
 
@@ -279,7 +280,7 @@ void save(@RequestBody SaveRequest req) {
 ```
 
 `deleted` here only covers rows removed with the default `deleteMode: 'mark'`; a grid using
-`deleteMode: 'permanent'` needs [`getRemovedRows()`](api.md#addingdeleting-rows-addrow--deleterow)
+`deleteMode: 'permanent'` needs [`getRemovedRows()`](rows.md#addingdeleting-rows-addrow--deleterow)
 instead, which reports positions in the last result rather than keys. For a screen that saves as
 the user goes, one row at a time, instead of one batch, see
-[Incremental Save](api.md#incremental-save-getoriginalrowdata--isnewrow--acknowledgesave--acknowledgeinsert).
+[Incremental Save](state-and-saving.md#incremental-save-getoriginalrowdata--isnewrow--acknowledgesave--acknowledgeinsert).

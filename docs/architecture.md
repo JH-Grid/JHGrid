@@ -1,6 +1,6 @@
 ---
 title: Architecture
-nav_order: 8
+nav_order: 7
 description: How the JHGrid data grid works internally - the canvas rendering pipeline, 2D virtualization, chunked data loading and the render scheduling flow.
 ---
 

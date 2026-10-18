@@ -1,6 +1,7 @@
 ---
 title: Themes
-nav_order: 5
+parent: Guides
+nav_order: 15
 description: Theme the JHGrid data grid - the full theme object, styling with your own CSS through --jhg-* custom properties, and canvas motion tuning.
 ---
 
@@ -44,7 +45,7 @@ const darkTheme = {
   readonlyCellBg: '#1e293b',
   // panels, menus, dialogs, editors
   overlayBg: '#1f2937', overlayBorder: '#374151', overlayHeaderBg: '#111827', overlayDivider: '#374151',
-  overlayText: '#f9fafb', overlayMutedText: '#9ca3af', overlayHintText: '#6b7280',
+  overlayText: '#f9fafb', overlayMutedText: '#9ca3af', overlayHintText: '#9ca3af',
   overlayHoverBg: '#374151', overlayItemHoverBg: '#374151',
   overlayAccentText: '#0b1220',                    // text on the light-blue Apply button
   pagerBg: '#111827', pagerText: '#e5e7eb', pagerBorder: '#374151',
@@ -136,7 +137,7 @@ stylesheet and it wins over whatever `theme` says, since every one of these is e
 | `overlayDivider` | `--jhg-overlay-divider` | `#E0E0E0` | Hairline between sections of a panel |
 | `overlayText` | `--jhg-overlay-text` | `#212121` | Primary text on those surfaces |
 | `overlayMutedText` | `--jhg-overlay-muted-text` | `#595959` | Secondary text (labels, counts) |
-| `overlayHintText` | `--jhg-overlay-hint-text` | `#909090` | Placeholder and hint text |
+| `overlayHintText` | `--jhg-overlay-hint-text` | `#6E6E6E` | Placeholder and hint text |
 | `overlayHoverBg` | `--jhg-overlay-hover-bg` | `#F5F5F5` | Hover background for a row in a list, such as a filter checklist |
 | `overlayItemHoverBg` | `--jhg-overlay-item-hover-bg` | `#F0F0F0` | Hover (and keyboard-focus) background for a menu item |
 | `overlayShadow` | `--jhg-overlay-shadow` | `0 4px 16px rgba(0,0,0,0.15)` | Shadow under panels and dialogs |
@@ -253,3 +254,104 @@ new JHGrid({
 Set `theme.hoverRowBg` to a falsy value to turn the highlight off entirely; the grid then does no
 hover tracking or repainting at all. Both durations are forced to `0` under
 `prefers-reduced-motion: reduce`, which removes the easing but keeps the highlight and the box.
+
+---
+
+## Conditional Styling (`rowHighlighter` / `cellBackground`)
+
+![Engineering rows tinted blue by rowHighlighter, with low-score cells additionally tinted red by cellBackground](images/conditional-styling.png)
+
+```js
+const grid = new JHGrid({
+  container: '#grid',
+  fetchMeta, fetchData,
+  rowHighlighter: (row) => row?.status === 'ERROR' ? 'rgba(239,68,68,0.12)' : null,
+  cellBackground: (row, rowIndex, field) =>
+    row && field === 'score' && row.score < 60 ? '#fee2e2' : null,
+});
+```
+Both callbacks are called on every render (for visible rows/cells), so keep them lightweight;
+exceptions thrown in `cellBackground` are logged and ignored, and don't block rendering.
+
+## Cell Decorator / Tooltip (`cellDecorator` / `cellTooltip`)
+
+`cellTooltip` supplies hover text for a cell; `cellDecorator` draws directly on the canvas on top of a
+cell, for a small mark, icon, badge or bar that the cell's own renderer doesn't provide.
+
+![Score cells showing plain numbers; hovering a cell shows the tooltip "47 out of 100"](images/cell-decorator-tooltip.png)
+
+```js
+const grid = new JHGrid({
+  container: '#grid',
+  data: [
+    { name: 'User 1', score: 30 },
+    { name: 'User 2', score: 64 },
+    // ...
+  ],
+  columnDefs: [
+    { field: 'name',  label: 'Name' },
+    { field: 'score', label: 'Score', align: 'right', width: 180 },
+  ],
+
+  // Shown at once while the pointer rests on a Score cell.
+  cellTooltip: (rowData, rowIndex, field) =>
+    field === 'score' ? `${rowData?.score} out of 100` : null,
+});
+```
+
+A decorator is a function that receives the canvas context and the cell's position, so it can draw
+anything on top of the value. For example, a thin bar along the bottom edge of each Score cell, as
+long as the score:
+
+```js
+new JHGrid({
+  // ...
+  cellDecorator: (ctx, { x, y, w, h, rowData, field }) => {
+    if (field !== 'score') return;
+    const score = Number(rowData?.score);
+    if (!Number.isFinite(score)) return;
+    ctx.fillStyle = '#2E75B6';
+    ctx.fillRect(x + 1, y + h - 4, (w - 2) * Math.min(100, Math.max(0, score)) / 100, 3);
+  },
+});
+```
+
+A decorator draws on plain `ctx` with the cell box it is given, and the canvas state it inherits is
+whatever the cell drawn just before it left behind. Unlike a column's renderer it does not start
+from a reset state and has no `args.text()`, so set `textAlign`, `textBaseline` and `fillStyle`
+yourself before any `fillText`. Leaving `textAlign` to chance puts the text wherever the previous
+column's alignment says, which for a right-aligned neighbour means drawing it to the left of the
+coordinate you passed.
+
+`cellDecorator` runs for every visible, loaded cell on every render, so keep it cheap and let it
+return early for cells it has nothing to say about. `cellTooltip` returns text (or `null` for
+none), replaces the built-in overflow tooltip for that cell, and is itself overridden by a
+validation error message on the same cell. If the decoration depends on host state that changed
+outside the grid, call [`repaint()`](reference-methods.md#repaint) and it is drawn again on the next frame. An exception
+thrown by either callback is logged and does not interrupt rendering.
+
+## Changing the Theme at Runtime (`setTheme` / `getTheme`)
+
+`setTheme(patch)` changes the theme of a grid that is already running. The keys in the patch replace
+theirs, everything else stays, and the grid keeps the unsaved edits, the selection and the scroll
+position it had - which is what a dark-mode toggle needs.
+
+```js
+const DARK = {
+  headerBg: '#1F2937', headerText: '#E5E7EB', headerBorder: '#374151',
+  rowEven: '#111827', rowOdd: '#0F172A', cellText: '#E5E7EB', cellBorder: '#1F2937',
+  scrollbarBg: '#111827', scrollbarThumb: '#4B5563',
+};
+
+document.querySelector('#dark-toggle').addEventListener('change', (e) => {
+  grid.setTheme(e.target.checked ? DARK : JHGrid.DEFAULT_THEME);
+});
+
+grid.getTheme();   // a copy of the theme the grid is drawing with
+```
+
+- Open panels and menus close when the theme changes; they are rebuilt in the new colours the next
+  time they open.
+- `fontSize` and `cellPadding` change how many lines a wrapped cell takes, so a theme change
+  re-measures the rows under [`autoRowHeight`](rows.md#wrapped-cells-and-auto-row-height-wrapcells--autorowheight).
+- Everything in the theme object can be patched; see the table at the top of this page.

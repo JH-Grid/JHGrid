@@ -1,6 +1,7 @@
 ---
 title: Interaction Reference
-nav_order: 6
+parent: Guides
+nav_order: 16
 description: Every mouse and keyboard interaction in the JHGrid data grid, including range selection, copy and paste as TSV, the fill handle and remappable shortcuts.
 ---
 
@@ -18,6 +19,7 @@ What a click, a drag or a key does. Everywhere below, `Ctrl` also means `Cmd` on
 |---|---|
 | Click a cell | Selects that cell (blue border). `onCellClick` fires |
 | Click a checkbox cell | Toggles it at once, if the column is editable |
+| Click a circle in a radio cell | Picks that option, if the column is editable (`Space` moves to the next one) |
 | Click a button column cell | Runs its `onClick`, whatever `editableCols` says. No selection border is drawn |
 | Click a cell's `cellButton` hotspot | Runs that button's `onClick` and does not start an edit |
 | Click an already-selected dropdown or multiselect cell | Opens its option list |
@@ -37,6 +39,8 @@ What a click, a drag or a key does. Everywhere below, `Ctrl` also means `Cmd` on
 |---|---|
 | Click a column header | Selects the whole column. Shift+click extends it across columns |
 | Click a header's filter icon | Opens the filter / sort panel for that column |
+| Click Asc / Desc in that panel | Sorts by that column alone |
+| Shift+click Asc / Desc in that panel | Adds that column to the current sort; the panel shows each column's priority as `#1`, `#2`, ... |
 | Click a header checkbox | Toggles it and calls `onHeaderCheckboxChange` |
 | Drag a column header | Reorders the column; the columns in between slide out of the way. `Escape` puts it back |
 | Drag a column header's right border | Resizes the column (30 px at the narrowest) |
@@ -52,13 +56,14 @@ What a click, a drag or a key does. Everywhere below, `Ctrl` also means `Cmd` on
 | Click the pin at the right of a row number | Pins or unpins the row, when `rowPinButton` is on |
 | Drag the bottom edge of a row number | Resizes that row (16 px at the shortest) |
 | Double-click the bottom edge of a row number | Fits that row to its tallest cell; with several rows selected, fits all of them |
-| Right-click a row number | Opens the row menu (pin, insert, delete) |
+| Right-click a row number | Opens the row menu (pin, insert, hide, delete) |
 
 ### Scrolling and touch
 
 | Action | Result |
 |---|---|
 | Mouse wheel / trackpad | Scrolls, with a short glide for wheel notches (`scrollEaseMs`) |
+| `Shift` + wheel | Scrolls sideways |
 | Drag the scrollbar | Vertical/horizontal scroll |
 | Click the scrollbar track | Jumps to that position immediately |
 | Tap | Acts as a click |
@@ -66,7 +71,7 @@ What a click, a drag or a key does. Everywhere below, `Ctrl` also means `Cmd` on
 
 ![Column header right-click context menu](images/header-context-menu.png)
 
-The menus themselves are described under [Context Menus](api.md#context-menus-rowcontextmenuitems--colcontextmenuitems--cellcontextmenuitems--setoptions).
+The menus themselves are described under [Context Menus](context-menus.md#context-menus-rowcontextmenuitems--colcontextmenuitems--cellcontextmenuitems--setoptions).
 
 ## Keyboard
 
@@ -88,7 +93,7 @@ The menus themselves are described under [Context Menus](api.md#context-menus-ro
 
 | Key | Action |
 |---|---|
-| `Enter` / `F2` | Start editing the selected cell. On a checkbox column they toggle the box; on a button column they click the button |
+| `Enter` / `F2` | Start editing the selected cell. On a checkbox column they toggle the box; on a radio column they move to the next option; on a button column they click the button |
 | `Space` | Same as `F2`, except that it types a space into a text cell |
 | Any printable key | Starts editing a text cell with that character in place of its current value |
 | `Enter` (while editing) | Commit and move down one row |
@@ -115,18 +120,32 @@ new JHGrid({
 | Key | Action |
 |---|---|
 | `Ctrl+C` | Copy the selected cell or range as tab-separated text, the way a spreadsheet does. With rows selected and no cell selected, copies those rows |
+| `Ctrl+X` | Cut: copies the selected range the way `Ctrl+C` does, then empties its editable cells |
 | `Ctrl+V` | Paste, starting at the selected cell |
 
 - Copied text is what the cells show: dates in their `format`, edits included. A value that contains
   a tab, a quote or a line break is quoted, so it pastes back as one cell.
-- Rows that have not loaded yet cannot be copied; a message says how many were left out.
+- A copy covers the rows the grid is holding. Rows that have not loaded yet have no value to
+  copy, so they are left out rather than pasted back as blank lines, and a message says how many.
+  Selecting a whole million-row server-backed grid therefore copies the loaded part of it; to take
+  every row somewhere else, use `exportCsv({ full: true })`, which fetches them all. A grid built
+  from a `data` array already holds every row, so a copy there covers all of them.
 - A paste writes only to editable cells. Values that fall past the last row or column, or into a
   read-only column, are dropped and a message says how many. A paste never adds rows or columns.
+- A cut is a copy followed by the same clear `Delete` performs: read-only columns are copied but
+  not emptied, and the whole cut is one undo step. It needs a cell or range selection; with only
+  rows selected there is nothing it could sensibly clear, so the key is left alone.
 - A single value pasted onto a selected range fills the whole range.
 - The whole paste is one undo step.
 - An image on the clipboard, pasted onto an editable `type: 'image'` cell, becomes a `blob:` URL that
   only exists in this page. Upload it and replace the value before you save.
 - The browser can ask for permission the first time a paste reads the clipboard.
+- **An insecure page still copies.** `navigator.clipboard` exists only in a secure context
+  (HTTPS, or `localhost`), so over plain HTTP the keyboard handler steps aside and the
+  browser's own `copy` / `cut` / `paste` events carry the same text instead - the keystrokes
+  behave the same, and so do the Edit and context menus. What a secure context adds is the
+  asynchronous API behind `Ctrl+V`: without it, a paste arrives only through the browser's own
+  paste event, which a page cannot trigger from code.
 
 ### Filling
 
@@ -173,3 +192,39 @@ applies the filter.
 > takes about 12 seconds. Time and memory both grow with the number of cells cleared. Repeating
 > `Delete` and `Ctrl+Z` does not accumulate memory, and a `Delete` over cells that are already
 > cleared does nothing.
+
+---
+
+## Accessibility
+
+The canvas is hidden from assistive technology, and the grid keeps a small, real ARIA structure in
+step with it: a `role="grid"` element with the row and column counts, the column headers, and the
+active cell, which is announced when the selection moves. Name the grid with `ariaLabel` (it
+defaults to `i18n.ariaGrid`).
+
+That `role="grid"` element is a container of its own inside the grid, holding nothing but the
+mirrored rows, because the role allows no other kind of child. Keyboard input goes to a hidden
+text field next to it, which carries `aria-controls` pointing at it and the
+`aria-activedescendant` naming the active cell. So the element to look for in a test or an
+integration is `[role="grid"]` *within* the grid's root element, not the root itself.
+
+- **The rows on screen are real DOM**, so a screen reader's own table keys work: the cell to the
+  left, the row above, "read this column" - none of it needs the selection to move first. The grid
+  carries `aria-rowcount` for the whole table and mirrors only the window the user is looking at,
+  the way a virtualised ARIA grid does, rebuilding it when that window moves rather than per frame.
+  `ariaRowMirror: false` turns it off, and `ariaRowMirror: { maxCells: 4000 }` moves the point
+  where a very wide grid stops paying for it (default 2000 cells; past it only the active cell is
+  exposed, with one console warning).
+- **Pinned rows are always in it**, since they never leave the screen: `aria-rowcount` counts them
+  and `aria-rowindex` puts them in reading order - the header is 1, then the rows pinned to the
+  top, then the body, then the rows pinned to the bottom. A grand total row (`summaryRow`) is one
+  of those, so a reader walking the table meets it where it is drawn.
+- Everything can be done from the keyboard: cells, the headers and the row numbers all take focus,
+  the filter panel keeps `Tab` inside it, and the menus are driven with the arrow keys. See the
+  [Interaction Reference](interaction.md).
+- Sorting, filtering, resetting filters, row selection, row reordering and pastes that dropped values
+  are announced through a live region, in the wording of `i18n`.
+- Under `prefers-reduced-motion: reduce` the hover fade, selection glide, wheel easing and column
+  slide are switched off and the loading shimmer is held still.
+- In Windows high-contrast mode (`forced-colors: active`) the canvas colours are replaced by the system
+  colours, so the grid stays legible with whatever theme you set, and go back when the mode ends.

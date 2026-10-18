@@ -16,46 +16,62 @@ Zero dependencies. Built-in editing, filtering, undo/redo, and 2D virtualization
 - **Large-data loading** - chunk-based async loading with prefetch & cache
 - **Frozen columns, pinned rows & scrollbars** - left/right column freezing, top/bottom pinned rows (totals), draggable vertical/horizontal scrollbars
 - **Pagination** - continuous scrolling or classic pages, with an optional page-size selector
-- **Selection & row operations** - cell/range selection, single/multi row selection, row drag reorder
-- **Editing** - inline editing, validation, undo/redo, TSV copy & paste, fill handle
-- **Rich cell types** - dropdown, multiselect, checkbox, date, richtext, image, button, plus custom editors/renderers
-- **Filtering & sorting** - set filter, tag filter for huge columns, quick filter, single-column sort
+- **Selection & row operations** - cell/range selection, single/multi row selection, row drag reorder (within a grid or between two), hide rows, move a row from code
+- **Editing** - inline editing, validation, undo/redo, TSV copy, cut & paste, fill handle, revert one row
+- **Rich cell types** - dropdown, multiselect, checkbox, radio, date, richtext, image, button, number, plus custom editors/renderers
+- **Filtering & sorting** - set filter, tag filter for huge columns, quick filter, multi-column sort
 - **CRUD & change tracking** - row/column add/delete with diff-based persistence
-- **Headers & styling** - multi-level headers, conditional row/cell styling, context menus you can narrow or extend
-- **State & export** - state snapshot/restore, CSV export, print preview
-- **i18n & accessibility** - KO/JA/ZH localization, ARIA, keyboard navigation with remappable shortcuts, high-contrast support
+- **Headers & styling** - multi-level headers (lockable against a drag), conditional row/cell styling, wrapped cell text with automatic row height, context menus you can narrow or extend
+- **Totals** - a grand total row pinned above or below the data, updated incrementally as cells change
+- **Changes at runtime** - subscribe to callbacks with `on()`/`off()`, swap the theme with `setTheme()` or the data source with `setDataSource()`, all without rebuilding the grid
+- **State & export** - state snapshot/restore (with or without unsaved edits), CSV export, print preview
+- **i18n & accessibility** - KO/JA/ZH localization, screen-reader table navigation over the rows on screen, keyboard navigation with remappable shortcuts, high-contrast support
 - **Zero dependencies & theming** - fully themeable with no runtime dependencies
 
 ---
 
 ## Benchmarks
 
-1,000,000 rows x 15 columns, 2 runs, the slower of the two. Every grid on its documented default
-configuration, with no large-data tuning options. Windows 11, i7-12700H, 32GB, headless Chromium
-153. Timed from the API call to each grid's own "done" signal plus two painted frames.
+1,000,000 rows (1M) x 16 columns, every grid on its documented default configuration with no
+large-data tuning. Windows 11, i7-12700H, 32GB, headless Chromium. Timed from the API call to each
+grid's own "done" signal plus two painted frames. Figures are the median of three runs, except
+Grid B, which is a single run: a second load of a million rows takes the renderer past
+Chromium's heap cap and it is killed. Run it yourself:
+`node scripts/bench-vs-grids.mjs --sizes 1000000 --libs <node_modules with the other grids>`.
 
-| | **JHGrid** | Grid A | Grid B | Grid C |
+Grid A, Grid B and Grid C are three widely used open-source grids, each on its current release and
+its own defaults. The figures are one machine's; the script that produced them is in the
+repository, so anyone can install those grids and re-run the same measurements.
+
+| 1M rows | **JHGrid** | Grid A | Grid B | Grid C |
 |---|---:|---:|---:|---:|
-| Create grid, first paint | **47ms** | 719ms | 404ms | 160ms |
-| Sort text, many repeats | **366ms** | 2.80s | 6.57s | 1.38s |
-| Sort text, mostly unique | **867ms** | 3.47s | 4.87s | 1.95s |
-| Sort number | **433ms** | 1.75s | 1.85s | 641ms |
-| Filter one value | **51ms** | 267ms | 100ms | not measured |
-| Filter, then sort inside it | **381ms** | 1.38s | 1.25s | not measured |
-| JS heap after load | **391MB** | 859MB | 777MB | 424MB |
+| Create grid, first paint | **67 ms** | 822 ms | 5.94 s | 470 ms |
+| Sort text, many repeats | **217 ms** | 1.42 s | 3.17 s | 2.42 s |
+| Sort CJK text (locale collation) | **320 ms** | 3.27 s | 9.15 s | 7.88 s |
+| Sort text, mostly unique (email) | **967 ms** | 3.87 s | 22.15 s | 5.88 s |
+| Sort free text, mixed case | **1.28 s** | 3.50 s | 14.21 s | 5.42 s |
+| Sort number, high cardinality | **476 ms** | 2.02 s | 3.73 s | 2.07 s |
+| Sort 5 distinct values | **134 ms** | 567 ms | 1.60 s | 1.12 s |
+| Filter one value | **33 ms** | 266 ms | 248 ms | 100 ms |
+| Filter, then sort inside it | **368 ms** | 1.60 s | 5.54 s | 1.43 s |
+| Quick search, every column | **933 ms** | 1.12 s | 1.68 s | 783 ms |
+| JS heap after load | **399 MB** | 866 MB | 2,991 MB | 798 MB |
+| Scroll 3s, frame p95 / frames over 50ms | **16.7 ms / 0** | 16.7 ms / 0 | 16.8 ms / 0 | 16.7 ms / 4 |
 
-Two cases go the other way. Sorting text that is *already* in order (a sequential `ORD-...` key)
-takes 450ms against Grid A's 186ms - Grid A's default comparator skips locale- and numeric-aware
-comparison, so it is doing less work rather than the same work faster. Quick search across every
-column takes 934ms against Grid B's 751ms; Grid B has no built-in quick search, so that
-figure is a filter function scanning all fields, not the same feature.
+One case goes the other way: sorting text that is *already* in order (a sequential `ORD-...` key)
+takes 417ms against Grid A's 150ms. JHGrid's comparator is locale- and numeric-aware, so `item2`
+sorts before `item10` and CJK text sorts by its own rules, which costs more per comparison than the
+plain string compare those defaults use. The CJK row above is the other side of that trade.
 
-Grid C's filter rows are blank because its `filter` property stops taking effect once its
-custom element has been created and removed on the same page, which is what this benchmark
-does between runs; no public API worked around it, so those numbers were not collected.
+Grid B is headless: it owns the row model and nothing else, so the harness renders its rows
+itself (a fixed-height virtualized `<table>`, which is what an app has to build). Its numbers are
+that row model plus that renderer, and the 3GB it holds at a million rows is why it only gets one
+run here.
 
-Scrolling is not a differentiator: all four grids hold a 16.7-16.8ms p95 frame time with zero
-frames over 50ms, at every row count tested.
+Size is what decides whether any of this matters. At 10,000 rows every grid here finishes every
+operation in about 33-120ms. At 100,000 the whole set takes **10.3s** against Grid A's 20.2s,
+Grid C's 31.8s and Grid B's 33.1s - a gap you can feel but live with. At 1,000,000 it is the
+table above.
 
 ---
 
@@ -144,8 +160,8 @@ const grid = new JHGrid({
 </script>
 ```
 
-See [Local Array Data](docs/api.md#local-array-data-data) for how filtering/sorting/`refresh()`
-behave against a plain array, and [Responsive Sizing](docs/api.md#responsive-sizing-responsive) for
+See [Local Array Data](docs/data-source.md#local-array-data-data) for how filtering/sorting/`refresh()`
+behave against a plain array, and [Responsive Sizing](docs/columns.md#responsive-sizing-responsive) for
 sizing to the container versus a fixed `width`/`height`.
 
 ### Server-paginated data
@@ -176,7 +192,7 @@ const grid = new JHGrid({
 </script>
 ```
 
-See [`fetchPage`](docs/api.md#fetchpage-single-callback-alternative) for a single-callback
+See [`fetchPage`](docs/data-source.md#fetchpage-single-callback-alternative) for a single-callback
 alternative to `fetchMeta`+`fetchData` when your backend already returns both together.
 
 A local copy of four of the grids on [`docs/demo.md`](docs/demo.md) — 1,000,000 rows, editing,
@@ -194,13 +210,17 @@ node demo/server.mjs
 **[Browse the docs online](https://jh-grid.github.io/JHGrid/)**, or read them directly in
 [`docs/`](docs/README.md), since this README stays a quick landing page:
 
-- **[Getting Started](docs/getting-started.md)**: what a grid needs, the decisions to make up front, using it inside a framework component, and a troubleshooting table
-- **[API Reference](docs/api.md)**: every constructor option, the data source interface, column types and editors, validation, pagination, all public methods (filtering, sorting, row/column CRUD, pinned rows, context menus, export) and the text reference for translating the grid
-- **[Theming](docs/theming.md)**: the full theme object, styling with your own CSS via `--jhg-*` custom properties, and canvas motion tuning
-- **[Interaction Reference](docs/interaction.md)**: every mouse and keyboard interaction, including copy, paste and the fill handle
+- **[Getting Started](docs/getting-started.md)**: what a grid needs, the decisions to make up front, using it inside a component, and a troubleshooting table
+- **[Features](docs/features.md)**: every feature and the guide that covers it, in one table
+- **Guides**: [Data Source](docs/data-source.md), [Columns](docs/columns.md), [Rows](docs/rows.md), [Selection](docs/selection.md), [Editing](docs/editing.md), [Cell Types](docs/cell-types.md), [Renderers & Custom Editors](docs/renderers-editors.md), [Filtering & Sorting](docs/filtering-sorting.md), [Pagination](docs/pagination.md), [Context Menus](docs/context-menus.md), [State & Saving](docs/state-and-saving.md), [Export & Print](docs/export.md), [Localization](docs/i18n.md)
+- **Reference**: [Options](docs/reference-options.md) (type and default for every option), [Methods](docs/reference-methods.md), [Callbacks](docs/reference-callbacks.md)
+- **[Themes](docs/theming.md)**: the full theme object, styling with your own CSS via `--jhg-*` custom properties, conditional styling, and canvas motion tuning
+- **[Interaction Reference](docs/interaction.md)**: every mouse and keyboard interaction, including copy, paste, the fill handle and accessibility
 - **[Spring Boot Integration](docs/integration.md)**: backend API shape, SQL paging, sorting and filtering, saving edits
 - **[Architecture](docs/architecture.md)**: internal structure and the virtual rendering flow
+- **[Performance](docs/performance.md)**: a million rows measured against other grids, and the options that decide the cost
 - **[Browser Support](docs/browser-support.md)**: minimum supported versions
+- **[Changelog](docs/changelog.md)**: the newest release in full, and a page per earlier version
 
 ---
 

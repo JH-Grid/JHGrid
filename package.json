@@ -1,6 +1,6 @@
 {
   "name": "@jh-grid/jhgrid-js",
-  "version": "0.3.4",
+  "version": "0.4.0",
   "description": "Canvas-based data grid with 2D virtualization, built-in editing, filtering and undo/redo, and zero runtime dependencies.",
   "keywords": [
     "grid",
@@ -14,7 +14,12 @@
     "virtualization",
     "spreadsheet",
     "editable-grid",
-    "javascript"
+    "javascript",
+    "million-rows",
+    "large-dataset",
+    "infinite-scroll",
+    "editable-table",
+    "javascript-data-grid"
   ],
   "homepage": "https://jh-grid.github.io/JHGrid/",
   "repository": {
