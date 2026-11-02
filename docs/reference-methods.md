@@ -9,7 +9,7 @@ description: Every public method of the JHGrid data grid - the full index plus t
 
 Every public method, alphabetically, with the page that documents it. The calls that belong to no single feature are written up here.
 
-Methods documented here: `canRedo()`, `canUndo()`, `clearEdits()`, `destroy()`, `getCellValue()`, `getCurrentPage()`, `getEdits()`, `getInvalidCells()`, `getPageCount()`, `getPageSize()`, `getRowData()`, `getTotalRows()`, `goToPage()`, `isValid()`, `nextPage()`, `prevPage()`, `ready()`, `redo()`, `refresh()`, `reloadData()`, `repaint()`, `scrollTo()`, `setCellValue()`, `setCellValues()`, `setPageSize()`, `undo()`, `validateAll()`.
+Methods documented here: `canRedo()`, `canUndo()`, `clearEdits()`, `destroy()`, `getCellValue()`, `getCurrentPage()`, `getEdits()`, `getInvalidCells()`, `getPageCount()`, `getPageSize()`, `getRowData()`, `getTotalRows()`, `goToPage()`, `isValid()`, `nextPage()`, `prevPage()`, `ready()`, `redo()`, `refresh()`, `reloadData()`, `repaint()`, `scrollTo()`, `setCellValue()`, `setCellValues()`, `setPageSize()`, `setRangeValue()`, `getRangeEdits()`, `getEditedRowCount()`, `undo()`, `validateAll()`.
 
 
 ## Public Methods
@@ -110,12 +110,16 @@ right are written up under [Features](features.md#features) rather than repeated
 | `getReservedRows()` | [Space Under a Row (`reserveRowSpace` / `getRowRect`)](rows.md#space-under-a-row-reserverowspace--getrowrect) |
 | `getRowChanges()` | [A Row's Edits, Before and After (`getRowChanges`)](rows.md#a-rows-edits-before-and-after-getrowchanges) |
 | `getRowRect()` | [Space Under a Row (`reserveRowSpace` / `getRowRect`)](rows.md#space-under-a-row-reserverowspace--getrowrect) |
+| `getRowState()` | [Showing What Changed (`editedCellBg` / `getRowState`)](state-and-saving.md#showing-what-changed-editedcellbg--getrowstate) |
 | `getViewportRect()` | [Space Under a Row (`reserveRowSpace` / `getRowRect`)](rows.md#space-under-a-row-reserverowspace--getrowrect) |
 | `revertRow()` | [Undoing One Row's Edits (`revertRow`)](state-and-saving.md#undoing-one-rows-edits-revertrow) |
 | `resetRowHeight()` | [Row Height (`setRowHeight` / `autoFitColumns`)](rows.md#row-height-setrowheight--autofitcolumns) |
 | `scrollTo()` | [`scrollTo(rowIndex)`](#scrolltorowindex) |
 | `setCellValue()` | [`setCellValue(row, field, value)`](#setcellvaluerow-field-value) |
 | `setCellValues()` | [`setCellValues(entries)`](#setcellvaluesentries) |
+| `setRangeValue()` | [`setRangeValue(range, value)`](#setrangevaluerange-value) |
+| `getRangeEdits()` | [`getRangeEdits()`](#getrangeedits) |
+| `getEditedRowCount()` | [`getEditedRowCount()`](#geteditedrowcount) |
 | `setFilter()` | [Field-Based Filter / Sort (`setFilter` / `setSort`)](filtering-sorting.md#field-based-filter--sort-setfilter--setsort) |
 | `setFilterValues()` | [Set Filter / Quick Filter](filtering-sorting.md#set-filter--quick-filter) |
 | `setHeaderCheckbox()` | [Row Selection (`rowSelection`) / Header Checkbox](selection.md#row-selection-rowselection--header-checkbox) |
@@ -283,8 +287,71 @@ grid.setCellValues([
 
 > **Performance note:** even batched, this still runs the full edit/validation pipeline once per
 > entry. Applying it to a very large number of rows at once (hundreds of thousands or more) can
-> take a long time and block the main thread while it runs; see the performance note under
-> [`Delete`](interaction.md) for a concrete measurement of the same underlying cost at that scale.
+> take a long time and block the main thread while it runs. When every entry carries the *same*
+> value - a header checkbox, clearing a column - use
+> [`setRangeValue()`](#setrangevaluerange-value) instead: it records the block rather than the
+> cells and does not grow with the number of rows.
+
+## `setRangeValue(range, value)`
+Sets every cell of a block to one value, as **one** undo step and **one** `onCellChange`. This is the
+answer to a header checkbox or a "fill this column" button over a large dataset: `setCellValues()`
+needs an entry per cell, so a million rows meant a million objects, while a block set to a single
+value is recorded as the block and costs the same whether it covers ten rows or a million.
+
+```js
+// tick 'active' on every row currently in the grid
+grid.setRangeValue({ r1: 0, r2: grid.getTotalRows() - 1, fields: ['active'] }, 'true');
+```
+
+- `range` is `{ r1, r2, fields }`: a first and last row index (either order) and the columns to
+  write. Columns that are not editable are skipped.
+- Returns `true` when the block was applied. Returns `false` **without changing anything** when the
+  range names no editable column, when a column decides editability per row (a locked row has to
+  keep its value, which only a per-cell write can honour), or when the grid already holds as many
+  blocks as it will. Use [`setCellValues()`](#setcellvaluesentries) in those cases.
+- Throws `TypeError` for an out-of-range row index, an empty `fields`, an unknown column, or a
+  non-string `value`.
+- Later writes win: `setCellValue()` on a cell inside the block replaces that one cell, and a
+  second block replaces the first where they overlap.
+- `onCellChange` receives `{ range: { r1, r2, fields }, newValue }` instead of one call per cell. A
+  handler written for the per-cell shape sees no `row` and can ignore it.
+- A `Delete` over a selected range takes the same path, so the same thing holds for it.
+
+Required-column validation still applies: a block that writes `''` into a `required` column makes
+[`isValid()`](#isvalid--getinvalidcells--validateall) false, and `getInvalidCells()` lists the cells.
+
+## `getEditedRowCount()`
+How many rows hold an unsaved edit, as a number. `Object.keys(grid.getEdits()).length` answers the
+same question but has to build an object per edited cell first, which is the expensive part when a
+block covers a million rows - and a block past the cap described below is not in that object at all.
+Use this for a "3 unsaved rows" indicator.
+
+```js
+document.querySelector('#unsaved').textContent = `${grid.getEditedRowCount()} unsaved rows`;
+```
+
+## `getRangeEdits()`
+The pending blocks, as `[{ r1, r2, fields, value }]` - whatever `setRangeValue()` or a `Delete` over
+a range put there.
+
+A small block is also spread out cell by cell in [`getEdits()`](#getedits), so a host that only ever
+sets a few hundred cells at a time can ignore this call. A large one appears **only** here:
+materialising an object per cell for a Ctrl+A over a million rows is exactly the cost the block
+representation exists to avoid, so past a cap `getEdits()` leaves those cells out and warns once.
+`getChanges()` carries the same list as `rangeEdits` when any block is pending.
+
+```js
+const { updated, rangeEdits = [] } = grid.getChanges();
+for (const { r1, r2, fields, value } of rangeEdits) {
+  // one statement per block, not one per row
+  await fetch('/api/bulk', { method: 'POST', body: JSON.stringify({ r1, r2, fields, value }) });
+}
+```
+
+Rows are indexes, the same ones `getEdits()` reports; map them to keys with
+[`getOriginalRowData()`](state-and-saving.md#incremental-save-getoriginalrowdata--isnewrow--acknowledgesave--acknowledgeinsert)
+when a small block needs them. A million keys is what the block avoids building, so a `Ctrl+A` block
+is meant to be saved as a range or as "everything matching the current filter", not as a key list.
 
 ## `undo()` / `redo()`
 Undoes or redoes the most recent action (cell edit, paste/fill/clear, row/column add/delete, column

@@ -48,6 +48,12 @@ in it - and keep it under whatever budget your storage has.
 sessionStorage.setItem('gridWork', JSON.stringify(grid.getState()));
 ```
 
+With `pagination` on, the snapshot also carries `page` and `pageSize`, so a restored view puts the
+user back on the page they were reading. They go back last and are clamped to the page count the
+restored filter leaves - a snapshot taken on page 8 of an unfiltered table lands on the last page
+when it is restored alongside a filter that leaves three. A grid that scrolls instead of paging has
+no page to come back to, and the keys are left out.
+
 A snapshot survives `JSON.stringify` / `JSON.parse` with one exception: a column added with
 `addColumn()` that carries a function (a custom `renderer`, `editor`, `validator` or `button.onClick`)
 keeps it only while the snapshot stays in memory. Restore such a column from your own definition
@@ -68,14 +74,14 @@ taken with an older version of the grid still applies as far as it goes.
 | `columnWidths` | `Record<string, number>` | Current width of every column, by field. With [`stretchColumns`](columns.md#filling-the-width-stretchcolumns) on, each column's own width rather than its stretched one |
 | `hiddenColumns` | `string[]` | Currently hidden fields |
 | `frozenCols` / `frozenColsRight` | `number` | Current frozen-column counts |
-| `pinnedTopRows` / `pinnedBottomRows` | `object[]` | Current pinned row data (edits merged in) — see [Pinned Rows](rows.md#pinned-rows-pinnedtoprows--pinnedbottomrows--pinrow) |
+| `pinnedTopRows` / `pinnedBottomRows` | `object[]` | Current pinned row data (edits merged in) - see [Pinned Rows](rows.md#pinned-rows-pinnedtoprows--pinnedbottomrows--pinrow) |
 | `sorts` | `{field, dir}[]` | Active sort |
 | `filters` | `Record<string, string \| string[]>` | Active per-column filters: `string` (substring match) or `string[]` (Set filter) |
 | `quickFilter` | `string` | Active quick-filter term, `''` when inactive |
 | `selectedRows` | `number[]` | Currently selected row indices (`rowSelection` mode) |
 | `headerCheckboxState` | `Record<string, boolean>` | Checked state of every `headerCheckbox` column's header checkbox |
 | `userSizedColumns` | `string[]` | Columns the user resized by hand: with [`stretchColumns`](columns.md#filling-the-width-stretchcolumns) on they keep that width instead of taking a share of the leftover space |
-| `hiddenRows` | `{ index, key }[]` | Rows the user hid, by their server index and the `rowKey` value they are found again by — see [Hiding Rows](rows.md#hiding-rows-hiderow--showrow--showallrows) |
+| `hiddenRows` | `{ index, key }[]` | Rows the user hid, by their server index and the `rowKey` value they are found again by - see [Hiding Rows](rows.md#hiding-rows-hiderow--showrow--showallrows) |
 | `localColumns` | `ColumnDef[]` | Columns added via `addColumn()` not yet committed (see `getNewColumns()`/`commitColumns()`) |
 | `deletedColumns` | `string[]` | Server columns marked deleted via `deleteColumn()`, not yet committed (see `getDeletedColumns()`) |
 | `rowChanges` | `object` | Unsaved row work: see below. Left out entirely by `getState({ rowChanges: false })` |
@@ -157,11 +163,65 @@ A value edited in a cell whose original value was a number comes back as a numbe
 as `null`); anything else stays the string that was typed. `getChanges()` throws if `rowKey` was
 not set.
 
-Rows removed with `deleteMode: 'permanent'` are **not** included in `deleted` — that mode is meant
+Rows removed with `deleteMode: 'permanent'` are **not** included in `deleted` - that mode is meant
 for lists that commit as they go, not a batch save, so fall back to `getRemovedRows()` for those.
 Pinned rows are never included either. `acknowledgeChanges(opts?: { keepScroll? })` takes the place
 of `clearEdits()` + `reloadData()` here specifically because that combination would keep the added
 rows around and show them a second time once the server returns them.
+
+## Showing What Changed (`editedCellBg` / `getRowState`)
+
+A grid that saves in a batch holds the user's work until the Save button is pressed, so the page
+has to show what is waiting. Two things do that: a theme key that tints the changed cells, and a
+call that answers what state a row is in.
+
+`editedCellBg` is off by default - a grid that saves on every keystroke has nothing to mark. Set it
+and every cell holding an unsaved edit is tinted:
+
+```js
+const grid = new JHGrid({
+  container: '#grid',
+  rowKey: 'id',
+  editableCols: ['name', 'qty'],
+  theme: { editedCellBg: '#FEF3C7' },
+  columnDefs: [
+    { field: 'id',   label: 'ID',       width: 70, align: 'right' },
+    { field: 'name', label: 'Name',     width: 180 },
+    { field: 'qty',  label: 'Quantity', width: 120, align: 'right' },
+  ],
+  data: [
+    { id: 1, name: 'Ada',   qty: '10' },
+    { id: 2, name: 'Grace', qty: '20' },
+    { id: 3, name: 'Lin',   qty: '30' },
+    { id: 4, name: 'Sam',   qty: '40' },
+  ],
+});
+
+await grid.ready();
+grid.setCellValue(0, 'qty', '12');
+grid.setCellValue(1, 'name', 'Grace H.');
+grid.deleteRow(2);
+```
+
+![Two cells tinted amber for their unsaved edits, the ID column in the read-only grey, and the third row struck through in red for its delete mark](images/edited-cells.png)
+
+The tint is painted over the `editableCellBg` / `readonlyCellBg` band, so an edit shows up whatever
+column it sits in, and under the row washes, so a selected or deleted row still reads as one. It
+goes when the edits go - `acknowledgeChanges()`, `revertRow()`, `clearEdits()`. Pinned rows are not
+tinted.
+
+`getRowState(rowIndex)` answers in the same four words `getChanges()` uses:
+
+```js
+grid.getRowState(0);   // 'updated'   - has unsaved edits
+grid.getRowState(2);   // 'deleted'   - marked with deleteRow()
+grid.getRowState(3);   // 'unchanged' - nothing waiting
+// 'added' - created with addRow() and not yet saved. A row added and then edited stays 'added',
+//           which is where getChanges() puts it.
+```
+
+It is a set lookup, so a column renderer may call it per row per frame - which is how a status
+column (a mark beside each changed row) is drawn.
 
 ## Undoing One Row's Edits (`revertRow`)
 

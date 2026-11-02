@@ -59,14 +59,14 @@ anything subscribed with `on()`.
 
 | Callback | Type | Default | Fires when |
 |---|---|---|---|
-| `onPageChange` | `Function` | `undefined` | Page-change callback `(page, pageCount) => void`, fired only when the page actually changes — see [Pagination](pagination.md#pagination) |
-| `onPageSizeChange` | `Function` | `undefined` | Page-size callback `(pageSize) => void`, fired when the rows per page change (through the selector or `setPageSize()`) — see [Pagination](pagination.md#pagination) |
+| `onPageChange` | `Function` | `undefined` | Page-change callback `(page, pageCount) => void`, fired only when the page actually changes - see [Pagination](pagination.md#pagination) |
+| `onPageSizeChange` | `Function` | `undefined` | Page-size callback `(pageSize) => void`, fired when the rows per page change (through the selector or `setPageSize()`) - see [Pagination](pagination.md#pagination) |
 | `onRowPinToggle` | `Function` | `undefined` | Called right after the *user* pins or unpins a row through the pin icon or the row menu: `({ pinned, rowIndex, position, rowData, handle }) => void`. Not called for `pinRow()`/`unpinRow()`/`togglePinRow()` made from code. See [Pinned Rows](rows.md#pinned-rows-pinnedtoprows--pinnedbottomrows--pinrow) |
 | `onCellChange` | `Function` | `undefined` | Cell value change callback `({ row, field, newValue, oldValue }) => void`. It fires for every cell a commit writes (each cell of a paste, fill or clear included), and also when the value came out the same, so compare `newValue` with `oldValue` if you only care about real changes. Values are strings - see [getEdits()](reference-methods.md#getedits) |
-| `onCellClick` | `Function` | `undefined` | Fired when the left button is pressed and released on the same cell, or a cell is tapped, alongside the built-in selection `(rowIndex, rowData, field) => void` — see [Selection, Focus and Editing from Code](selection.md#selection-focus-and-editing-from-code-getselection--setselection--focuscell--startediting--stopediting) |
+| `onCellClick` | `Function` | `undefined` | Fired when the left button is pressed and released on the same cell, or a cell is tapped, alongside the built-in selection `(rowIndex, rowData, field) => void` - see [Selection, Focus and Editing from Code](selection.md#selection-focus-and-editing-from-code-getselection--setselection--focuscell--startediting--stopediting) |
 | `onCellDoubleClick` | `Function` | `undefined` | Fired on every cell double-click, editable or not, alongside (not instead of) the built-in edit-start `(rowIndex, rowData, field) => void` |
-| `onRowSelect` | `Function` | `undefined` | Callback fired whenever the selected row index array changes `(rows: number[]) => void` — see [Row Selection](selection.md#row-selection-rowselection--header-checkbox) |
-| `onRowReorder` | `Function` | `undefined` | Drag-reorder completion callback `(fromIndex, toIndex, rowData) => void` — see [Row Drag Reorder](rows.md#row-drag-reorder-rowreorder) |
+| `onRowSelect` | `Function` | `undefined` | Callback fired whenever the selected row index array changes `(rows: number[]) => void` - see [Row Selection](selection.md#row-selection-rowselection--header-checkbox) |
+| `onRowReorder` | `Function` | `undefined` | Drag-reorder completion callback `(fromIndex, toIndex, rowData) => void` - see [Row Drag Reorder](rows.md#row-drag-reorder-rowreorder) |
 | `onRowDragOut` | `Function` | `undefined` | A row of this grid was dropped on another grid of the same `rowDragGroup`. Return `false` to call the move off - see [Dragging Rows Between Grids](rows.md#dragging-rows-between-grids-rowdraggroup) |
 | `onRowDropIn` | `Function` | `undefined` | A row from another grid of the same `rowDragGroup` was dropped here. Return `false` to refuse it, or a row object to insert that instead - see [Dragging Rows Between Grids](rows.md#dragging-rows-between-grids-rowdraggroup) |
 | `onSelectionChange` | `Function` | `undefined` | Cell/range selection change callback (`null` = selection cleared) |
@@ -78,5 +78,5 @@ anything subscribed with `on()`.
 | `onRowHeightResize` | `Function` | `undefined` | Per-row height drag-resize completion callback from the row-number gutter `(rowIndex, height) => void` |
 | `onRender` | `Function` | `undefined` | Callback fired after every render |
 | `onChunkError` | `Function` | `undefined` | Data chunk load failure callback `(err: Error) => void` |
-| `onValidationError` | `Function` | `undefined` | Cell validity change callback `(row, field, message: string \| null) => void` — see [Validation](reference-methods.md#isvalid--getinvalidcells--validateall) |
-| `onHeaderCheckboxChange` | `Function` | `undefined` | Header checkbox click callback `(field, checked) => void` — see [Header Checkbox](selection.md#row-selection-rowselection--header-checkbox) |
+| `onValidationError` | `Function` | `undefined` | Cell validity callback `(row, field, message: string \| null) => void`; `null` means valid, so a good cell reports too. An edit reports its cell every time; a whole-grid revalidation reports only what changed - see [Validation](reference-methods.md#isvalid--getinvalidcells--validateall) |
+| `onHeaderCheckboxChange` | `Function` | `undefined` | Header checkbox click callback `(field, checked) => void` - see [Header Checkbox](selection.md#row-selection-rowselection--header-checkbox) |

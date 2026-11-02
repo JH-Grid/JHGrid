@@ -12,7 +12,7 @@ Eight small grids, each isolating one thing: raw scroll performance at 1,000,000
 editing, filtering, frozen columns, pinned rows, row selection, column types/renderers, and theming. Every grid
 on this page is a real `JHGrid` instance, loaded on the published site from the
 [jsDelivr CDN build](../README.md#option-c-cdn); view source on this page to
-see the exact code. The snippets under each heading are the options that section is about — the
+see the exact code. The snippets under each heading are the options that section is about - the
 page's own script has the whole thing.
 
 <div id="jhg-demo-boot-error" style="display:none;background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;
@@ -28,7 +28,7 @@ go.
 <p id="jhg-demo-perf-status" class="jhg-demo-status">Booting…</p>
 <div class="jhg-demo-card" id="jhg-demo-perf" ></div>
 
-Nothing about the grid changes at this row count — it asks for one page of rows at a time and
+Nothing about the grid changes at this row count - it asks for one page of rows at a time and
 throws away the pages it has scrolled past:
 
 ```js
@@ -40,7 +40,7 @@ new JHGrid({
 });
 ```
 
-Point `fetchData` at your API instead of an array and the row count stops mattering at all — see
+Point `fetchData` at your API instead of an array and the row count stops mattering at all - see
 [`fetchMeta`](data-source.md#fetchmeta) and [`fetchData`](data-source.md#fetchdata).
 
 ## Editing
@@ -50,7 +50,7 @@ paste a range.
 
 <div class="jhg-demo-card" id="jhg-demo-edit" ></div>
 
-`editableCols` decides what can be edited — `'*'` for every column, or a list of fields. `type`
+`editableCols` decides what can be edited - `'*'` for every column, or a list of fields. `type`
 picks the editor, and `validation` rejects a bad value with a red border and a message:
 
 ```js
@@ -118,15 +118,15 @@ new JHGrid({
 });
 ```
 
-Users can also freeze a column from its header menu — see
+Users can also freeze a column from its header menu - see
 [Frozen Columns](columns.md#frozen-columns-frozencols--frozencolsright).
 
 ## Pinned rows
 
-`pinnedBottomRows` keeps a row fixed at the bottom of the grid, detached from scroll/sort/filter —
+`pinnedBottomRows` keeps a row fixed at the bottom of the grid, detached from scroll/sort/filter -
 the classic use case is a totals row. Scroll or click a column header to sort; the total row never
 moves and is never affected. `rowPinButton` draws a pin at the right edge of the row-number gutter
-— hover a row to see it, click to pin a copy to the top. The button below does the same thing from
+- hover a row to see it, click to pin a copy to the top. The button below does the same thing from
 code with `pinRow()`, for when the pin should be triggered some other way. Either way it becomes
 its own independent copy, so editing it afterward doesn't touch the original row.
 
@@ -136,7 +136,7 @@ its own independent copy, so editing it afterward doesn't touch the original row
 <div class="jhg-demo-card" id="jhg-demo-pinned" ></div>
 
 A pinned row is a plain object, so a totals row is whatever you compute from the data you already
-have — the grid never sums anything on its own:
+have - the grid never sums anything on its own:
 
 ```js
 const grid = new JHGrid({
@@ -181,7 +181,7 @@ const grid = new JHGrid({
 grid.getSelectedRows();      // [3, 4, 7] - row indices, in ascending order
 ```
 
-For the other pattern — a checkbox column with a tick-everything box in its header — see
+For the other pattern - a checkbox column with a tick-everything box in its header - see
 [Row Selection / Header Checkbox](selection.md#row-selection-rowselection--header-checkbox).
 
 ## Column types & renderers
@@ -217,10 +217,10 @@ new JHGrid({
 
 The Joined column names its own `format`. Leave `format` out and the column follows the locale's
 date pattern instead, so the same stored `2026-03-14` reads `03/14/2026` under `en` and
-`2026/03/14` under `ja` — see [Date Columns](cell-types.md#date-columns-type-date).
+`2026/03/14` under `ja` - see [Date Columns](cell-types.md#date-columns-type-date).
 
 Thirteen renderers ship built in (`progressBar`, `badge`, `checkmark`, `link`, `image`, …) and
-`registerCellRenderer()` adds your own — see
+`registerCellRenderer()` adds your own - see
 [Built-in Cell Renderers](renderers-editors.md#built-in-cell-renderers-cellrenderers) and
 [Column Types](renderers-editors.md#column-types-date--richtext--image-and-custom-editorsrenderers).
 

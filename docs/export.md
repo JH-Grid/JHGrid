@@ -22,7 +22,7 @@ table and a **Print** button.
 By default both cover only the **rows loaded so far**: the chunks the grid has fetched, plus rows
 you added. `exportCsv({ full: true })` fetches every row that matches the current filter and sort
 instead, asking your `fetchData` for each page (a `data` array simply has all of them already).
-`printGrid()` has no `full` option, so it prints what has loaded.
+`printGrid({ full: true })` does the same for the print preview.
 
 A full export asks for several pages at once rather than waiting for one at a time, and uses
 [`fullScanPageSize`](reference-options.md#constructor-options) as the page size when you set it. A million rows over twenty-two
@@ -30,6 +30,11 @@ columns export in about five seconds; raising `fullScanPageSize` cuts the number
 your server sees. A column holding a data URI per row (an `image` column) is the one case that
 stays slow, because the file itself becomes hundreds of megabytes - hide that column before
 exporting if you do not need it.
+
+A full export follows the order on screen, including an order a drag left behind - the rows that
+were moved are written where the user put them, not where the server returned them. The pages are
+written as they arrive rather than collected first, so what it holds is the file being built, not
+the table.
 
 `exportCsv({ full: true })` is also the way to take **every** row somewhere else. Copying with
 `Ctrl+C` covers only the rows the grid is holding, since it has no values for the rest; see
@@ -42,11 +47,35 @@ exporting if you do not need it.
 | `includeHeaders` | `true` | Start with a line of column labels |
 | `bom` | `true` | Prefix a UTF-8 byte order mark, so Excel reads Korean, Japanese or Chinese text correctly. `false` for a plain UTF-8 file |
 | `full` | `false` | Export every row that matches the filter and sort, not only loaded ones |
+| `onProgress` | - | `({ rows, total }) => void`, called once per page during a `full` export. See below |
 
 | `printGrid` option | Default | Meaning |
 |---|---|---|
 | `title` | `''` | Heading above the table, and the popup's title |
 | `includeHeaders` | `true` | Show the column labels |
+| `full` | `false` | Print every row that matches the filter and sort, not only loaded ones |
+| `onProgress` | - | As for `exportCsv`, during a `full` print |
+
+## Showing progress
+
+A full export of a million rows takes seconds. It does not block the page - the pages are fetched
+and awaited, so the grid stays responsive - but nothing on screen says how far it has got, and
+your own code cannot tell: the pages arrive inside the grid and nowhere else. `onProgress` is
+called once per page with the rows written so far and the row count the grid holds for the current
+filter.
+
+```js
+await grid.exportCsv({
+  full: true,
+  onProgress: ({ rows, total }) => {
+    bar.value = Math.min(100, Math.round((rows / total) * 100));
+  },
+});
+```
+
+`rows` can pass `total` when your `fetchData` returns more rows than the grid was told about, so
+clamp before showing a percentage. `onProgress` is not called for the default export, which covers
+the loaded rows and returns at once.
 
 ```js
 // A CSV button. exportCsv is asynchronous when full: true, so await it.

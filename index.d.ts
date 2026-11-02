@@ -19,6 +19,12 @@ export interface GridTheme {
   scrollbarThumb?: string;
   scrollbarArrow?: string;
   scrollbarRadius?:number;
+  /** Outer corners of the grid itself. Defaults to `0`. */
+  gridRadius?:     number;
+  /** Menus, filter panels and dialogs. Defaults to `6`. */
+  overlayRadius?:  number;
+  /** Buttons and inputs inside them, and the pager buttons. Defaults to `4`. */
+  controlRadius?:  number;
   frozenBorder?:   string;
   filterIconBg?:   string;
   sortIconBg?:     string;
@@ -28,6 +34,13 @@ export interface GridTheme {
   hiddenColIndicator?: string;
   editableCellBg?:    string;
   readonlyCellBg?:    string;
+  /**
+   * Background of a cell holding an unsaved edit. Off by default. Painted over the
+   * editable/read-only tint and under the row-state washes, so a changed cell shows up whatever
+   * column it sits in and a deleted or selected row still reads as one. Pinned rows are not
+   * marked. It goes when the edits do (`acknowledgeChanges()`, `revertRow()`, `clearEdits()`).
+   */
+  editedCellBg?:      string;
   imagePlaceholderBg?: string;
   imageErrorBg?:       string;
   imageErrorIcon?:     string;
@@ -87,6 +100,8 @@ export interface CellRendererArgs {
   rowData:  Record<string, unknown>;
   rowIndex: number;
   colIndex: number;
+  /** The column's field name - the same one a `cellDecorator` is given. */
+  field:    string;
   theme:    Required<GridTheme>;
   padding:  number;
   /**
@@ -273,7 +288,12 @@ export interface ColumnDef {
   editor?:      string | ((ctx: CellEditorCtx) => CellEditorEl | null | undefined);
   editorOptions?: Record<string, unknown>;
   options?:     DropdownOption[] | ((rowData: Record<string, unknown>) => DropdownOption[]);
-  editable?:    boolean;
+  /** `true`/`false` for the whole column, or a function for a decision that depends on the row -
+   *  a closed voucher, an approved line, a shipped quantity. It is asked again at every write
+   *  (editor, paste, fill handle, Ctrl+X, a checkbox tap) and drives the read-only tint, so a
+   *  locked row inside an editable column stays locked and looks locked. A call that throws locks
+   *  the cell, and a row the grid has not loaded yet is locked without calling it. */
+  editable?:    boolean | ((rowData: Record<string, unknown>, rowIndex: number, field: string) => boolean);
   validation?:  ColumnValidation;
   button?:      ButtonColumnDef;
   cellButton?:  CellButtonDef;
@@ -324,6 +344,12 @@ export declare function computeHeaderCells(headerRows: HeaderRowDef[][] | undefi
 export interface GridMeta {
   totalRows: number;
   columns:   string[];
+  /**
+   * Totals for the summary row, computed by the server for the state it was asked about - the same
+   * thing `setSummaryValues()` does, except a filter or sort change refreshes them. `null` hands the
+   * totals back to the grid; leaving the key out keeps whatever is in place.
+   */
+  summary?:  Record<string, string | number | null> | null;
 }
 
 export interface GridData {
@@ -350,6 +376,12 @@ export interface GridState {
   quickFilter:   string;
   selectedRows:  number[];
   headerCheckboxState: Record<string, boolean>;
+  /**
+   * The pager's position, present only while `pagination` is on. `setState()` restores both, after
+   * the rows are in and clamped to the page count the restored filter leaves.
+   */
+  page?:         number;
+  pageSize?:     number;
   localColumns: (Omit<ColumnDef, 'field'> & { field: string })[];
   deletedColumns: string[];
   /**
@@ -362,6 +394,11 @@ export interface GridState {
     removed: number[];
     marked:  number[];
     edits:   Record<number, Record<string, string>>;
+    /** Blocks set to one value, as `setRangeValue()` and a range Delete record them. Rows are
+     *  visual indexes; present only when a block is pending. */
+    rects?:  { r1: number; r2: number; fields: string[]; value: string }[];
+    /** Cells taken out of a block since, as `"<row>_<field>"`. Present only when there are any. */
+    holes?:  string[];
   };
   pinnedTopRows:    Record<string, unknown>[];
   pinnedBottomRows: Record<string, unknown>[];
@@ -540,9 +577,18 @@ export interface PaginationOptions {
 export interface JHGridOptions {
   container:        string | Element;
   /** `totalRows` must be a non-negative integer; anything else is reported on the console and treated as 0. */
-  fetchMeta?:       (state?: GridFilterState | null) => Promise<GridMeta>;
-  fetchData?:       (page: number, size: number, state?: GridFilterState | null) => Promise<GridData>;
-  fetchPage?:       (page: number, size: number, state?: GridFilterState | null) => Promise<GridData & { totalRows: number; columns?: string[] }>;
+  /**
+   * `opts.signal` is aborted when the answer stops being wanted - the user sorted again, typed
+   * another letter into the quick filter, or the grid was destroyed. The grid already throws such
+   * an answer away; passing the signal on to `fetch()` (or to your own cancellation) is what stops
+   * the query as well. On a filtered million-row table one superseded count is seconds of database
+   * time that nobody is waiting for.
+   *
+   * It is optional on both sides: a host that ignores it behaves exactly as before.
+   */
+  fetchMeta?:       (state?: GridFilterState | null, opts?: { signal?: AbortSignal }) => Promise<GridMeta>;
+  fetchData?:       (page: number, size: number, state?: GridFilterState | null, opts?: { signal?: AbortSignal }) => Promise<GridData>;
+  fetchPage?:       (page: number, size: number, state?: GridFilterState | null, opts?: { signal?: AbortSignal }) => Promise<GridData & { totalRows: number; columns?: string[]; summary?: Record<string, string | number | null> | null }>;
   /** An empty array needs `columnDefs` as well, since columns cannot be derived from no rows. */
   data?:            Record<string, unknown>[]
                     | Promise<Record<string, unknown>[]>
@@ -554,9 +600,30 @@ export interface JHGridOptions {
   headerHeight?:    number;
   hoverFadeMs?:     number;
   selectionMoveMs?: number;
+/**
+   * Glide length in ms for a mouse-wheel notch; `150` by default, which is about what Chrome's own
+   * wheel scrolling does. `0` applies the notch where it lands, which is the most responsive and
+   * the most abrupt. The glide starts in the same task as the wheel event, so a longer value does
+   * not make it feel later.
+   * Deltas smaller than one row (precision trackpads) are applied immediately either way.
+   */
   scrollEaseMs?:    number;
   columnSlideMs?:   number;
+  /**
+   * Wraps a header label that does not fit instead of clipping it. The header row does not grow
+   * for the extra lines on its own - `headerHeight` decides how many of them fit, and the last
+   * one that does ends in an ellipsis. Turn on `autoHeaderHeight` to let the header take the
+   * height the labels need.
+   */
   wrapHeader?:      boolean;
+  /**
+   * Lets the header grow to fit the lines `wrapHeader` produces, with `headerHeight` as the
+   * floor. Every header row takes the same height, so a group header and its leaves stay in
+   * step. `{ maxLines }` caps how tall it can get; past that the last visible line ends in an
+   * ellipsis, as it does without this option. Needs `wrapHeader` - there is nothing to grow for
+   * a label that is clipped to one line.
+   */
+  autoHeaderHeight?: boolean | { maxLines?: number };
   /**
    * Wrap cell text onto as many lines as the column's width needs, instead of clipping it with an
    * ellipsis. Explicit line breaks in a value still break lines. A word wider than the column is
@@ -600,6 +667,15 @@ export interface JHGridOptions {
    */
   rowDragGroup?:    string;
   fullScanConcurrency?: number;
+  /**
+   * Page size for a whole-table scan - a row-drag reorder, `exportCsv({ full: true })` or
+   * `printGrid({ full: true })`. Defaults to 10,000 (or `chunkSize`, whichever is larger), not to
+   * `chunkSize` alone: `chunkSize` is sized for one viewport, and at 300 a million-row scan is
+   * 3,334 calls into your `fetchData`. Set it lower if your backend prefers smaller pages.
+   *
+   * A host that serves fewer rows than asked is handled: the scan takes the first page's length as
+   * the size you are willing to serve and drives the rest at that size.
+   */
   fullScanPageSize?:    number;
   editableCols?:    string[] | '*';
   rowKey?:          string;
@@ -625,6 +701,12 @@ export interface JHGridOptions {
    */
   lockHeaderGroups?: boolean;
   columnLetterHeader?: boolean;
+  /** `false` when `data` is already in the order it should be shown in: filters and the quick
+   *  filter still apply, the sort keys are still reported through `onSort` and drawn in the
+   *  header, but the array is handed over in the order it is in. For a caller that owns the
+   *  ordering and re-orders the array itself when the sort changes. */
+  sortRows?:        boolean;
+  filterRows?:      boolean;
   showRowNumbers?:  boolean;
   rowNumberWidth?:  number;
   responsive?:      boolean;
@@ -684,7 +766,17 @@ export interface JHGridOptions {
   onPageChange?:    (page: number, pageCount: number) => void;
   onPageSizeChange?: (pageSize: number) => void;
   onRender?:        () => void;
-  onChunkError?:    (err: Error) => void;
+  /** `chunkIndex` is the page of rows that failed, counted in `chunkSize` rows. */
+  onChunkError?:    (err: Error, chunkIndex: number) => void;
+  /**
+   * A cell's validity. `message` is the reason it is invalid, or `null` when it is valid - so this
+   * fires for a good cell too, not only a bad one.
+   *
+   * An edit reports the cell it touched every time, whether or not the verdict moved. A
+   * revalidation of the whole grid (`validateAll()`, and the one that follows an undo or a sort)
+   * reports only the cells whose verdict changed, including a `null` for one that was invalid and
+   * is not looked at any more.
+   */
   onValidationError?: (row: number, field: string, message: string | null) => void;
   onHeaderCheckboxChange?: (field: string, checked: boolean) => void;
   rowHighlighter?:  (rowData: Record<string, unknown> | null, rowIndex: number) => string | null | undefined;
@@ -765,7 +857,11 @@ export interface SummaryRowOptions {
   labelField?: string;
   /** Row background. `null` leaves the row unpainted. Default `'#f1f5f9'`. */
   background?: string | null;
-  /** Past this many rows nothing is totalled, and `capped` says so. Default 200000. */
+  /**
+   * Past this many rows nothing is totalled, and `capped` says so. Default 200000. Counted over the
+   * rows actually totalled, which on a server-backed grid is the loaded ones - the whole table is
+   * never read to total it, so the cap is about the cost of the walk, not the size of the table.
+   */
   maxRows?: number;
   /**
    * The records to total, instead of the rows the grid is showing. For a host that keeps its own
@@ -775,7 +871,12 @@ export interface SummaryRowOptions {
   rows?: () => Record<string, unknown>[] | null;
   /** Leaves a row out of the total: a header row that already shows a subtotal, for instance. */
   excludeRow?: (rowData: Record<string, unknown>, rowIndex: number) => boolean;
-  /** Total the loaded rows even when some rows of a server-backed grid are missing. Default false. */
+  /**
+   * Total the loaded rows even when some rows of a server-backed grid are missing. Default false,
+   * which leaves the row blank instead of showing a total over part of the table. Either way the
+   * grid only reads rows it already holds; a total over the whole table comes from the server,
+   * through `fetchMeta`'s `summary` or `setSummaryValues()`.
+   */
   allowPartial?: boolean;
   locale?: string;
 }
@@ -787,6 +888,12 @@ export interface SummaryStats {
   missing: number;
   /** `maxRows` was exceeded, so nothing was totalled. */
   capped: boolean;
+  /**
+   * What the numbers cover: `'all'` every row the grid holds (a grid with its own data, or totals
+   * the host supplied) or `'loaded'` the rows a server-backed grid has fetched - `missing` counts
+   * the rest. A pager does not narrow it: pagination is a window onto the rows, not a cut of them.
+   */
+  scope: 'all' | 'loaded';
   /** `'computed'`, `'host'` after `setSummaryValues()`, or `'blank'` when the row was left empty. */
   source: 'computed' | 'host' | 'blank';
 }
@@ -840,6 +947,20 @@ export declare class JHGrid {
    * column's `parse` (or restores the type the original value had) instead of handing back text.
    */
   getEdits(opts?: { byKey?: boolean; typed?: boolean }): Record<string | number, Record<string, unknown>>;
+  /**
+   * How many rows hold an unsaved edit - O(1), where asking `getEdits()` the same thing means
+   * building an object per edited cell first.
+   */
+  getEditedRowCount(): number;
+  /**
+   * Blocks set to a single value - by a Delete over a selection, or by `setRangeValue()`.
+   *
+   * A small block also appears cell by cell in `getEdits()`. A large one appears only here, and
+   * `getEdits()` warns once when it leaves cells out. Apply one
+   * of these as a single statement - `UPDATE ... SET field = value` over the rows - rather than
+   * row by row. Rows are indexes, as `getEdits()` reports them.
+   */
+  getRangeEdits(): Array<{ r1: number; r2: number; fields: string[]; value: string }>;
   /** The row index a `rowKey` value sits at, or -1. O(loaded rows). */
   getRowIndexByKey(key: unknown): number;
   /** The row a `rowKey` value names, or null when the grid does not hold it. */
@@ -851,6 +972,8 @@ export declare class JHGrid {
     updated: Record<string, unknown>[];
     added:   Record<string, unknown>[];
     deleted: unknown[];
+    /** Present only when blocks are pending; see `getRangeEdits()`. */
+    rangeEdits?: Array<{ r1: number; r2: number; fields: string[]; value: string }>;
   };
   acknowledgeChanges(opts?: { keepScroll?: boolean }): Promise<void>;
   /**
@@ -874,6 +997,26 @@ export declare class JHGrid {
   setCellValue(row: number, field: string, value: string): void;
   /** Same rules as `setCellValue`, applied as a single undo step. */
   setCellValues(entries: Array<{ row: number; field: string; value: string }>): void;
+
+  /**
+   * Sets every cell of a block to one value, as one undo step and one `onCellChange`.
+   *
+   * The block is recorded as a block, so the cost follows the edits already pending rather than
+   * the size of the range:
+   *
+   * ```js
+   * grid.setRangeValue({ r1: 0, r2: grid.getTotalRows() - 1, fields: ['active'] }, 'true');
+   * ```
+   *
+   * Columns that are not editable are skipped. Returns `false` without changing anything when the
+   * range names no editable column, when a column decides editability per row (a locked row has to
+   * keep its value, which only a per-cell write can honour), or when the grid is already holding
+   * as many blocks as it will - use `setCellValues` in those cases.
+   *
+   * `onCellChange` receives `{ range: { r1, r2, fields }, newValue }` rather than one call per
+   * cell. A handler written for the per-cell shape sees no `row` and can ignore it.
+   */
+  setRangeValue(range: { r1: number; r2: number; fields: string[] }, value: string): boolean;
 
   isValid(): boolean;
   getInvalidCells(): Record<number, Record<string, string>>;
@@ -924,6 +1067,12 @@ export declare class JHGrid {
   getTotalRows(): number;
   getOriginalRowData(rowIndex: number): Record<string, unknown> | null;
   isNewRow(rowIndex: number): boolean;
+  /**
+   * One row's save state, in the words `getChanges()` uses. A set lookup, so a cell renderer may
+   * call it per row per frame. A row that was added and then edited answers `'added'`, and a row
+   * marked for deletion answers `'deleted'` whatever was typed into it first.
+   */
+  getRowState(rowIndex: number): 'added' | 'updated' | 'deleted' | 'unchanged';
   acknowledgeSave(rowIndex: number, savedData: Record<string, unknown>): void;
   acknowledgeInsert(rowIndex: number, savedData: Record<string, unknown>): boolean;
 
@@ -990,10 +1139,9 @@ export declare class JHGrid {
 
   /**
    * A snapshot of the view. `rowChanges` (every unsaved edit, added row and delete mark) is part
-   * of it by default, which is what makes the snapshot restorable and what makes it large - with
-   * 200,000 edited cells it stringifies to ~5.4MB, past the usual `sessionStorage` limit, against
-   * under a kilobyte for the view settings alone. Pass `{ rowChanges: false }` to leave the
-   * editing session out; `setState()` accepts either shape.
+   * of it by default, which makes it restorable and large - about 5.4MB at 200,000 edited cells,
+   * past the usual `sessionStorage` limit. Pass `{ rowChanges: false }` to leave the editing
+   * session out; `setState()` accepts either shape.
    */
   getState(): GridState;
   getState(opts: { rowChanges: false }): Omit<GridState, 'rowChanges'>;
@@ -1005,7 +1153,12 @@ export declare class JHGrid {
    * printed and a console warning reports how many server rows were left out; pass
    * `{ full: true }` to fetch every filtered row first (returns a Promise in that case).
    */
-  printGrid(opts?: { title?: string; includeHeaders?: boolean; full?: boolean }): void | Promise<void>;
+  printGrid(opts?: {
+    title?:          string;
+    includeHeaders?: boolean;
+    full?:           boolean;
+    onProgress?:     (p: { rows: number; total: number }) => void;
+  }): void | Promise<void>;
 
   exportCsv(opts?: {
     filename?:       string;
@@ -1013,6 +1166,16 @@ export declare class JHGrid {
     includeHeaders?: boolean;
     bom?:            boolean;
     full?:           boolean;
+    /**
+     * Called once per page of rows during a `{ full: true }` export, with the rows written so far
+     * and the row count the grid holds for the current filter. A million-row export takes seconds
+     * and the pages arrive nowhere else, so this is the only way to show how far it has got. It is
+     * not called for the default export, which covers the loaded rows and returns at once.
+     *
+     * `rows` can pass `total` when the host's scan returns more rows than the grid was told about,
+     * so clamp before showing a percentage.
+     */
+    onProgress?:     (p: { rows: number; total: number }) => void;
   }): Promise<void>;
 
   addRow(rowData?: Record<string, unknown>, opts?: { index?: number }): number;
@@ -1026,9 +1189,9 @@ export declare class JHGrid {
    * new order shows at once, `onRowReorder` fires so the host can save it, and the state kept by
    * row index (edits, selection, undo) is discarded. Returns false when nothing moved.
    *
-   * Needs `rowReorder: true`. Awaiting the call covers the row scan that option starts, so the
-   * first move on a server-backed grid takes as long as that scan. Rows added with addRow() and
-   * pinned rows cannot be moved, as with the drag.
+   * Needs `rowReorder: true`. It returns a promise because it reads the row it is moving and the
+   * screenful it lands on before it answers. Rows added with addRow() and pinned rows cannot be
+   * moved, as with the drag.
    */
   /**
    * Runs several structural changes as one: one redraw and one undo step for the lot. Adding or

@@ -146,7 +146,8 @@ Register your own under a string key with `registerCellRenderer(name, factory)` 
 counterpart, `registerCellEditor`), see the custom-editor example below for the matching factory
 shape. The factory is called once per column with the options you pass, and returns the function
 that draws one cell. `args` carries the cell's box (`x`, `y`, `w`, `h`), `value`, `rowData`,
-`rowIndex`, `colIndex`, `theme`, `padding` and `text()`.
+`rowIndex`, `colIndex`, `field` (the column's field name, as a `cellDecorator` gets it), `theme`,
+`padding` and `text()`.
 
 `args.text(str, opts)` writes one line into the cell: it uses the column's own alignment, centres
 the line vertically and clips it with an ellipsis at the cell edge, so a renderer that only puts
@@ -341,7 +342,7 @@ of checkboxes under the cell.
 the same accent border the built-in editors draw. It lives inside the grid wrapper, so it tracks the
 grid on its own, and it is removed with the editor.
 
-Pass `el` to place an element you already have — a native `<input type="color">`, say — instead of
+Pass `el` to place an element you already have - a native `<input type="color">`, say - instead of
 letting it make a `<div>`; that is what an editor whose control *is* its element wants, and it is how
 the example above positions its input. Either way the element fills the cell, as the built-in
 editors' inputs do (clear its `width`/`height` afterwards if you want its natural size).
@@ -362,7 +363,7 @@ resizes. Options:
 | `maxHeight` | `240` | px, or `null` for unbounded. Scrolls past it |
 | `flip` | `true` | flip to the other side of the cell when the chosen one has no room, and clamp horizontally into the viewport |
 | `chrome` | `true` | apply the standard overlay background/border/shadow, matching the built-in panels |
-| `role` | – | ARIA role, e.g. `'listbox'` |
+| `role` | - | ARIA role, e.g. `'listbox'` |
 | `ariaLabel` | `true` | `true` for the grid's standard "edit *column*, row *n*" label, a string for your own, `false` for none |
 
 **`ctx.done(opts)`** → the `{ value, remove }` object the grid commits from, with the keyboard and
@@ -374,9 +375,9 @@ down every surface the editor created, so there is nothing to clean up by hand.
 |---|---|---|
 | `value` | *(required)* | `() => string` (or a plain value), read once at commit |
 | `outside` | `'commit'` | what a mousedown outside the editor does: `'commit'` / `'cancel'` / `'ignore'`. The built-in single-choice dropdown uses `'cancel'` |
-| `keys` | – | per-key override, e.g. `{ enter: false, escape: 'cancel' }`. Each is `'commit'`, `'cancel'`, `'commit-and-move'`, or `false` to leave the key alone |
-| `onKey` | – | `(e) => boolean`, seen before the mapping above, for keys the editor handles itself (arrow navigation in a listbox, say). Return `true` to stop there. Torn down with the rest, so an editor never registers a keydown listener of its own |
-| `onCommit` / `onCancel` | – | run just before the grid is told, for editor-local bookkeeping |
+| `keys` | - | per-key override, e.g. `{ enter: false, escape: 'cancel' }`. Each is `'commit'`, `'cancel'`, `'commit-and-move'`, or `false` to leave the key alone |
+| `onKey` | - | `(e) => boolean`, seen before the mapping above, for keys the editor handles itself (arrow navigation in a listbox, say). Return `true` to stop there. Torn down with the rest, so an editor never registers a keydown listener of its own |
+| `onCommit` / `onCancel` | - | run just before the grid is told, for editor-local bookkeeping |
 
 The returned object also exposes `commit()` and `cancel()`, for an editor that closes itself from
 its own UI (an OK button, say).

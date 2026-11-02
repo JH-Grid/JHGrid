@@ -170,7 +170,9 @@ function build() {
       return [...seen];
     },
 
-    onCellChange:      ({ row, field, newValue }) => log('onCellChange', `[${row}] ${field} = ${newValue}`),
+    onCellChange:      ({ row, field, newValue, range }) => log('onCellChange', range
+      ? `[${range.r1}..${range.r2}] ${range.fields.join(', ')} = ${newValue}`     // a whole block in one call
+      : `[${row}] ${field} = ${newValue}`),
     onSelectionChange: (sel) => log('onSelectionChange', sel ? JSON.stringify(sel) : 'null'),
     onSort:            (sorts) => log('onSort', JSON.stringify(sorts)),
     onFilter:          (filters) => log('onFilter', JSON.stringify(filters)),
@@ -184,10 +186,15 @@ function build() {
       log('onHeaderCheckboxChange', `${f} = ${checked}`);
       if (f !== 'active') return;
       const n = applyState(ROWS, grid.getState()).length;
-      logSuppressed = true; // one bulk edit shouldn't spam a log line per row
-      grid.setCellValues(Array.from({ length: n }, (_, r) => ({ row: r, field: 'active', value: String(checked) })));
-      logSuppressed = false;
-      log('onCellChange', `(bulk) active = ${checked} x ${n} rows`);
+      // One value over every row is exactly what setRangeValue records as a block: 40 ms at a
+      // million rows, where an entry per cell took seconds. It declines the cases a block cannot
+      // represent, so setCellValues stays as the fallback.
+      if (!grid.setRangeValue({ r1: 0, r2: n - 1, fields: ['active'] }, String(checked))) {
+        logSuppressed = true; // one bulk edit shouldn't spam a log line per row
+        grid.setCellValues(Array.from({ length: n }, (_, r) => ({ row: r, field: 'active', value: String(checked) })));
+        logSuppressed = false;
+        log('onCellChange', `(bulk) active = ${checked} x ${n} rows`);
+      }
       status();
     },
     onRender:          () => {},   // fires every frame, not logged
@@ -203,7 +210,7 @@ function status() {
   const st = grid.getState();
   $('#status').textContent =
     `columns ${st.columns.length} | locale ${opts.locale} | theme ${opts.dark ? 'dark' : 'light'} | ` +
-    `edits ${Object.keys(grid.getEdits()).length} | selected ${grid.getSelectedRows().length} rows | ` +
+    `edits ${grid.getEditedRowCount()} | selected ${grid.getSelectedRows().length} rows | ` +
     `added ${grid.getNewRows().length} | deleted ${grid.getDeletedRows().length}`;
 }
 

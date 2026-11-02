@@ -25,12 +25,20 @@ needs rows the grid does not have.
 fetchMeta: (state?: GridFilterState | null) => Promise<{
   totalRows: number;   // total number of rows in the dataset (after state's filters, if any)
   columns: string[];   // ordered list of column keys
+  summary?: Record<string, string | number | null> | null;  // optional: totals for summaryRow
 }>
 ```
 
 `state` is the sort/filter/quick-filter the grid wants applied, the same shape `fetchData`
 receives (see below). A `fetchMeta` that ignores it still works, it just always reports the
 unfiltered total, which makes the scrollbar/row count wrong the moment a filter or sort is active.
+
+`summary` is for the grand total row (see [Rows](rows.md#summary-row-summaryrow)). The grid only
+totals the rows it has loaded - it never reads the rest of the table to add it up - so a total over
+the whole table is the server's to compute. Sending it here rather than through
+`setSummaryValues()` ties it to the state it was asked about: a filter or sort change brings fresh
+numbers with the new count. Leave the key out and nothing changes; `summary: null` hands the totals
+back to the grid.
 
 ## `fetchData`
 
@@ -118,6 +126,118 @@ backend is asked once per chunk per five seconds rather than on every frame that
 The grid keeps at most two chunk requests in flight and holds new requests while the user is
 actively wheel-scrolling, so a fast scroll over a huge dataset asks only for the chunks it lands on.
 
+## Host query contract
+
+Your callback is asked for **one page at a time**, and three operations walk every page of the
+current result:
+
+| Operation | What it needs |
+|---|---|
+| A row-drag reorder, or `moveRow()` | every row, to know the order it is rewriting |
+| `exportCsv({ full: true })` | every row that matches the filter |
+| `printGrid({ full: true })` | the same |
+
+Those scans use [`fullScanPageSize`](reference-options.md#constructor-options), which defaults to
+`max(chunkSize, 10000)`. **Cache your result per `state`.** A callback that re-filters its array on
+every call pays rows × pages; one that caches pays rows once. Measured on a million rows filtered
+to 200,000, exporting the lot:
+
+| Host | Calls | Rows the host walked | Time |
+|---|---|---|---|
+| re-filters per call | 20 | 20,000,000 | 299 ms |
+| re-filters per call, `fullScanPageSize: 300` | 667 | 667,000,000 | 5,441 ms |
+| caches per `state` | 20 | 1,000,000 | 125 ms |
+
+```js
+let cacheKey = null, cacheRows = null;
+const resolve = (state) => {
+  const key = JSON.stringify(state ?? {});
+  if (key !== cacheKey) { cacheKey = key; cacheRows = myQuery(state); }
+  return cacheRows;
+};
+
+fetchMeta: async (state) => ({ totalRows: resolve(state).length, columns: COLS }),
+fetchData: async (page, size, state) => ({ rows: resolve(state).slice(page * size, page * size + size) }),
+```
+
+A backend that serves fewer rows than asked is handled for you: the scan takes the first page's
+length as the size you are willing to serve and drives the rest at that size, so a cap of 1,000
+costs more calls but never loses a row.
+
+### A scan is not atomic
+
+The pages of a scan are separate calls, so rows can change between them. Measured against SQL
+Server, exporting 300,000 filtered rows while another connection deleted 40,000 of them: the file
+came out with 260,000 rows and no duplicates - the same count as the rows that survived - but
+40,000 surviving rows were missing from it and 40,000 already-deleted rows were in it. Offset-based
+paging skips the tail when rows below the cursor disappear, and the row count alone does not show
+it.
+
+Pick one if the table can change under an export:
+
+- hold the scan inside one `SNAPSHOT` or `REPEATABLE READ` transaction, so every page reads the
+  same version of the table
+- page by key (`WHERE id > @lastSeen ORDER BY id`) instead of by offset, so a deletion behind the
+  cursor cannot shift the rows ahead of it
+- freeze the result first - select the matching keys into a temp table per `state`, then read pages
+  from that. This is also the fastest of the three for small pages
+
+### The scan competes with the grid for connections
+
+A scan runs [`fullScanConcurrency`](reference-options.md#constructor-options) queries at once
+(2-8, from the machine's core count). On a small pool those queries crowd out the chunk fetches the
+visible grid is making, and the rows on screen fail to load while the export runs. Lower
+`fullScanConcurrency`, or give the pool more room than the scan takes.
+
+### Matching what the `data` array path does
+
+Nothing obliges your query to behave like the built-in one - a `WHERE` clause is yours to write.
+But if you want a server-backed grid to answer exactly as the same data would through
+[`data`](#local-array-data-data), these are the rules it follows:
+
+- a **string** filter condition is a case-insensitive substring match; an **array** condition is an
+  exact match against `String(value)`, and an **empty array** is ignored rather than matching nothing
+- the **quick filter** is matched against every column of the grid, hidden ones included, and
+  against nothing else; a Korean-initials term (`ㄱㅁㅅ`) is OR'd with the substring match rather
+  than replacing it. **A SQL query has no equivalent of the initials half** - see below
+- a **sort** compares numerically when both values parse as numbers and otherwise through
+  `Intl.Collator(undefined, { numeric: true })`; `'item2'` sorts before `'item10'`
+- a **date column** with a `format` compares by its pattern (see [Columns](columns.md)); the
+  tie-breaker, after every key, is the row's original position
+
+### Two things a SQL query cannot copy
+
+Both came out of running the same million rows through a real SQL Server and through a `data`
+array, and both are the host's to decide rather than the grid's.
+
+**Korean initials have no SQL equivalent.** A term of initial consonants (`ㄱㅁㅅ`) matching the
+names those are the initials of works by reading the initial out of each Hangul code point, which
+`LIKE` cannot do and a collation does not change. A server-backed
+grid gets `state.quickFilter = 'ㄱㅁㅅ'` and, with an ordinary `LIKE '%ㄱㅁㅅ%'`, finds nothing. If you
+need it, keep a column of initials next to the text and search that:
+
+```sql
+-- filled on insert/update, or as a computed column
+ALTER TABLE employee ADD name_chosung AS dbo.fn_chosung(name) PERSISTED;
+```
+
+**Edits arrive as display text, not as stored values.** Every value in `getEdits()` is the string the
+cell holds, so a checkbox is `'true'`/`'false'`, not `1`/`0`; a number column is `'1,234'` if that is
+what is shown; a date is in the column's `format`. Mapping them back is the host's job, and the
+mapping is per column type:
+
+| Column | Cell holds | SQL wants |
+|---|---|---|
+| `type: 'checkbox'` | `'true'` / `'false'` | `bit`: `1` / `0` |
+| `type: 'number'` | `'1,234.50'` (as formatted) | `decimal`: `1234.50` |
+| `type: 'date'`, `format: 'MM/DD/YYYY'` | `'12/31/2026'` | `date`: `'2026-12-31'` |
+
+`getEdits({ typed: true })` runs each column's `parse` and hands back the type the original value
+had, which covers the ordinary cases; a column whose stored form is its own (an enum, a code table)
+still needs the host's own mapping. The same applies in the other direction to a filter condition:
+a `bit` column filtered from the grid arrives as the text `'true'`, so
+`CAST(active AS nvarchar) IN ('true')` matches no row - map it to `1` before it reaches the query.
+
 ## `fetchPage`: single-callback alternative
 
 For a backend that already returns a page of rows *and* the total count together in one round
@@ -130,6 +250,7 @@ fetchPage: (page: number, size: number, state?: GridFilterState | null) =>
     rows: Record<string, unknown>[];
     totalRows: number;
     columns?: string[]; // only needed if not already provided via columnDefs
+    summary?: Record<string, string | number | null> | null;  // optional: totals for summaryRow
   }>
 ```
 
@@ -188,8 +309,8 @@ What the grid does with the array:
   [`getEdits()`](reference-methods.md#getedits) and apply them to your own data.
 - **Text filter** (`setFilter`, the filter panel's search box): case-insensitive substring match on
   that field. **Set filter** (`setFilterValues`, the checklist): exact match on the value as text.
-- **Quick filter** (`setQuickFilter`): case-insensitive substring match against *every* value of the
-  row object, including keys that have no column.
+- **Quick filter** (`setQuickFilter`): case-insensitive substring match against every column of the
+  grid, hidden ones included. A field with no column is not searched.
 - **Sorting.** Two numbers compare as numbers; a `type: 'date'` column compares as dates read through
   its pattern, so `'12/31/2019'` sorts before `'03/01/2020'` under `MM/DD/YYYY`; anything else compares
   as text with numeric collation, so `'item2'` sorts before `'item10'`. Empty values, and a date value

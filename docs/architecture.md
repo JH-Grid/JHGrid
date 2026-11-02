@@ -70,13 +70,13 @@ index, which is why they clear the state keyed by it (edits, selection, undo his
 
 A canvas grid's performance comes from *not* building DOM per cell: however many rows are loaded,
 the visible ones are pixels the `Renderer` paints, not elements the browser has to lay out. Almost
-everything on screen — cell values, gridlines, selection, the row-number gutter, sort and filter
-marks — is drawn, not built.
+everything on screen - cell values, gridlines, selection, the row-number gutter, sort and filter
+marks - is drawn, not built.
 
 Editing is the exception, and it has to be. IME composition (Korean, Japanese, Chinese), screen
 readers, and a native `<input type="date">` picker are browser behaviours that only exist for real
 focused elements; a canvas cannot fake any of them. So an edit session mounts real DOM over the
-cell, and JHGrid keeps exactly one alive at a time — `_editing` is a single slot, and starting
+cell, and JHGrid keeps exactly one alive at a time - `_editing` is a single slot, and starting
 another edit, scrolling the grid, or mousing down anywhere commits the previous one first.
 
 That bound is what makes the exception safe, and it is the reason the editor surfaces
@@ -98,7 +98,7 @@ its write pass, so re-anchoring costs one forced layout per frame no matter how 
 
 The renderer and `cellDecorator` contexts deliberately have no equivalent. Handing them a way to
 mount DOM would turn a per-editor cost into a per-cell one, which is the property this architecture
-exists to have. Anything a cell needs to *show* is drawn instead — which is why affordances like
+exists to have. Anything a cell needs to *show* is drawn instead - which is why affordances like
 `columnDefs[].cellButton` are drawn by the renderer from the same definition the hit test reads,
 rather than by host code positioning an element.
 

@@ -97,7 +97,7 @@ export, a fill over a huge range, a total.
 | [`chunkSize`](reference-options.md#constructor-options) | `300` | Rows per `fetchData` call. Larger means fewer round trips and more memory per chunk |
 | [`maxCachedChunks`](reference-options.md#constructor-options) | `50` | How many chunks stay in memory. This is what caps a server-backed grid's footprint |
 | [`fullScanConcurrency`](reference-options.md#constructor-options) | 2-8, from the core count | Pages fetched in parallel by a full export or print |
-| [`fullScanPageSize`](reference-options.md#constructor-options) | `chunkSize` | Page size for that same scan. A larger page is far fewer round trips over HTTP |
+| [`fullScanPageSize`](reference-options.md#constructor-options) | `max(chunkSize, 10000)` | Page size for that same scan. A larger page is far fewer round trips over HTTP, and far fewer calls into a host that filters per call - see [Data Source](data-source.md#host-query-contract) |
 | [`autoRowHeight`](rows.md#wrapped-cells-and-auto-row-height-wrapcells--autorowheight) | `false` | Up to 5,000 rows every loaded row is measured; past that only a window around the viewport is, and the scrollbar shifts a little as taller rows come into view |
 | [`summaryRow.maxRows`](rows.md#summary-row-summaryrow) | `200000` | Past this many rows nothing is totalled, and `getSummaryStats().capped` says so |
 | [`ariaRowMirror`](interaction.md#accessibility) | on, `maxCells: 2000` | The rows on screen are mirrored into DOM for screen readers; past `maxCells` only the active cell is |

@@ -100,12 +100,22 @@ Chips wrap and then scroll rather than growing the panel off-screen, and a value
 panel is ellipsized with the full text in its `title`. Nothing is applied until **Apply**: filtering
 is a server round trip, and committing per chip would cost one request per tag.
 
-A global search term across all columns is handled via the quick filter. JHGrid doesn't render
-its own toolbar, so build the search box UI in the host page and pass the value through this API.
-Every call reloads the data, so debounce it on a server-backed grid:
+A global search term is handled via the quick filter. JHGrid doesn't render its own toolbar, so
+build the search box UI in the host page and pass the value through this API. Every call reloads
+the data, so debounce it on a server-backed grid:
+
+On a `data` array the term is matched against **the grid's columns** - every column in
+`columnDefs`, hidden ones included, and nothing else. A field the host carries along without a
+column (an `avatar` data URI, an internal `note`) is not searched: a match there would hide rows'
+reason for matching, and searching an image data URI for every row is what used to make a
+Korean-initials term cost several times an ordinary one.
+
+With no `columnDefs`, the columns are the keys of `data[0]`, so every field is searched - which is
+the same rule, since every field is a column then. On a server-backed grid the term is passed to
+your `fetchData` and the scope is whatever your query does.
 
 ```html
-<input id="search" type="search" placeholder="Search all columns">
+<input id="search" type="search" placeholder="Search">
 <div id="grid"></div>
 
 <script type="module">
@@ -125,8 +135,16 @@ grid.clearQuickFilter();   // same as setQuickFilter('')
 ```
 
 The term is at most 1000 characters. What it searches is up to `fetchData`: it receives the term as
-`state.quickFilter`. For a `data` array, every value of a row is searched, including keys that
-have no column.
+`state.quickFilter`. For a `data` array, the grid's columns are searched - see above.
+
+### Korean initials
+
+A term made only of Korean initial consonants, such as `ㄱㅁㅅ`, also matches the initials of what
+is in the cells. It applies only when every character of the term is an initial consonant, and the
+ordinary substring match still runs alongside it, so no other search changes and no row is ever
+lost. The same holds for a text condition set with `setFilter()` and for the header filter.
+
+Worked examples, and why this is Korean only, are in [Localization](i18n.md#searching-by-initials).
 
 ## Field-Based Filter / Sort (`setFilter` / `setSort`)
 

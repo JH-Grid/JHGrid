@@ -63,8 +63,8 @@ reported by `getEdits()` under its index (`isNewRow(index)` is `true`), and `get
 the row with them applied.
 
 A save button that sends updated/added/deleted rows together can either assemble that payload by
-hand from `getEdits()`/`getNewRows()`/`getDeletedRows()` as above, or — when rows have a stable key
-(most do) — call [`getChanges()`](state-and-saving.md#batch-save-rowkey--getchanges--acknowledgechanges) instead, which
+hand from `getEdits()`/`getNewRows()`/`getDeletedRows()` as above, or - when rows have a stable key
+(most do) - call [`getChanges()`](state-and-saving.md#batch-save-rowkey--getchanges--acknowledgechanges) instead, which
 does the same assembly keyed by that column:
 
 ```js
@@ -110,14 +110,14 @@ every export already leaves it out**: `getTotalRows()`, the row indexes of the r
 export, and anything computed over the rows. It is not a change to save - it stays out
 of `getChanges()` and `getRemovedRows()`, and rides in `getState()` with the hidden columns.
 
-**Set `rowKey`.** A sort, a filter or a `reloadData()` re-numbers every server row, so hidden rows
-are found again by their `rowKey` value as the new rows arrive. Without `rowKey` there is nothing
-stable to find them by and they come back visible (with one console warning).
+**Set `rowKey`.** A sort, a filter, a `reloadData()` or a row reorder re-numbers every server row,
+so hidden rows are found again by their `rowKey` value as the new rows arrive. Without `rowKey`
+there is nothing stable to find them by and they come back visible (with one console warning).
 
 | | |
 |---|---|
 | Hidden by | the server index at the time, and the `rowKey` value where there is one |
-| Survives a sort/filter/reload | with `rowKey`; without it, the rows come back |
+| Survives a sort/filter/reload/reorder | with `rowKey`; without it, the rows come back |
 | In `getState()` | yes, as `hiddenRows: [{ index, key }]` |
 | In exports and totals | no - a hidden row is not in the view at all |
 | A row added here and not saved yet | cannot be hidden (no identity to hide it by) - delete it instead |
@@ -228,10 +228,33 @@ grid.refreshSummary();          // recompute now
   in the grid's `locale`.
 - `background` shades the row (`'#f1f5f9'` by default, `null` leaves it unpainted). A
   `cellBackground` of your own still wins wherever it returns a colour.
-- **A server-backed grid only holds the chunks it has fetched**, so a total over a half-loaded table
-  would be a plausible-looking wrong number. Those are left blank, with one warning, unless
-  `allowPartial: true`; `setSummaryValues()` is the path for a server that totals properly.
+- **A server-backed grid only holds the chunks it has fetched**, and it totals only those. It does
+  not read the rest of the table to add it up: that would be a query nobody asked for, and the
+  chunk cache is bounded, so the rows on screen would be evicted by rows nobody is looking at. A
+  total over part of a table is a plausible-looking wrong number, so those are left blank with one
+  warning unless `allowPartial: true`, and `getSummaryStats().missing` says how many rows were left
+  out. A total over the whole table comes from the server, through `fetchMeta`'s `summary` or
+  `setSummaryValues()`.
+
+  ```js
+  // The server totals the state it was asked about, so a filter change brings fresh numbers.
+  fetchMeta: async (state) => ({
+    totalRows: await countRows(state),
+    columns,
+    summary: await totals(state),      // { salary: 412000000, score: 81.4 }
+  }),
+  ```
+
+  `fetchPage` carries it the same way, beside `rows` and `totalRows`. `getSummaryStats().source` is
+  then `'host'`. Leaving the key out keeps whatever is in place; `summary: null` hands the totals
+  back to the grid.
+- `getSummaryStats().scope` says what the numbers cover: `'all'` every row the grid holds (its own
+  data, or totals you supplied) or `'loaded'` the rows a server-backed grid has fetched, with
+  `missing` counting the rest. A pager does not narrow it - pagination is a window onto the rows,
+  not a cut of them, so the total is the same on every page.
 - Past `maxRows` (200,000 by default) nothing is totalled and `getSummaryStats().capped` says so.
+  It counts the rows actually totalled - the loaded ones on a server-backed grid - so a table of a
+  million rows does not switch the summary off by itself.
 - `rows` and `excludeRow` hand the choice of records to you, for a grid whose rows on screen are a
   shaped view of something you hold yourself. `rows()` returns the records to total instead of the
   rows the grid shows; `excludeRow(rowData, rowIndex)` drops a row that is on screen but is not
@@ -249,9 +272,10 @@ grid.refreshSummary();          // recompute now
 
 ![Mid-drag: a row being dragged down through several rows, with a blue insertion line](images/row-drag-reorder.png)
 
-Drag rows by the row-number gutter to reorder them. Unlike column reordering, row data isn't
-always resident in memory under server-side paging, so enabling this scans the entire dataset once
-(it's an opt-in feature).
+Drag rows by the row-number gutter to reorder them. Under server-side paging the rows aren't
+resident, so the grid keeps the order as a list of positions - which row of your `fetchData` result
+sits where on screen, 4 bytes each - and reads nothing to build it. A plain click on the gutter
+selects the row.
 
 ```js
 const grid = new JHGrid({
@@ -269,9 +293,16 @@ What to expect:
   the order (`toIndex` is where the row ended up, `fromIndex` where it was).
 - Like a sort, a drop discards the state keyed by row index (edits, selection, undo history), and
   asks with a `window.confirm()` first when a server row has an unsaved edit.
-- Dragging starts working once the full scan has finished, so on a big dataset it is not available
-  the instant the grid appears. Rows added with `addRow()` and pinned rows cannot be dragged. `fullScanPageSize` and
-  `fullScanConcurrency` tune the scan.
+- **A drag reads nothing up front.** The order starts out as 1, 2, 3 and so on - the order your
+  `fetchData` already returns - so the drop line is there on the first press, on any size of table.
+  A drop moves one number in that list, and the rows for the screen are fetched the way they always
+  were. Rows added with `addRow()` and pinned rows cannot be dragged.
+- After a drop the grid re-reads the screenful it is showing, since it does not hold the rows. A
+  move shifts the rows between its two ends by one, so a chunk inside that span straddles two of
+  your pages instead of one, and *k* moves make it at most *k*+1. `moveRow()`'s promise covers that
+  read, so `getRowData()` on the next line sees the new order.
+- `exportCsv({ full: true })` and the other whole-table reads follow the order you dragged, and
+  buffer the table while they do - that is the export's memory, and it goes away with it.
 
 ```js
 new JHGrid({
@@ -415,9 +446,9 @@ onRowDropIn: ({ rowData }) => ({ title: rowData.task, assignee: rowData.who, sta
 
 What to expect:
 
-- Dragging **out** does not need `rowReorder`. Only the one row travels, so the full scan that
-  option starts is not involved. Set `rowReorder: true` as well when the same grid should also
-  reorder within itself; then a drop inside its own canvas reorders and a drop on a sibling moves.
+- Dragging **out** does not need `rowReorder`. Only the one row travels, and the order the option
+  keeps is not involved. Set `rowReorder: true` as well when the same grid should also reorder
+  within itself; then a drop inside its own canvas reorders and a drop on a sibling moves.
 - Rows added with `addRow()` and not saved yet, and pinned rows, cannot be dragged - as with
   [row reorder](#row-drag-reorder-rowreorder).
 - Grids with different `rowDragGroup` names ignore each other, and so does a grid with no group.
@@ -448,9 +479,8 @@ What to expect:
   move, and the state keyed by row index (edits, selection, undo history) is discarded. An unsaved
   edit on a server row asks with `window.confirm()` first; keeping the edit leaves the order as it
   was and the call answers `false`.
-- It needs `rowReorder: true`, and awaiting it covers the full scan that option starts - so on a
-  large server-backed grid the **first** call takes as long as that scan and the ones after it are
-  immediate. That is why it returns a promise.
+- It needs `rowReorder: true`. It returns a promise because it reads the row it is moving and the
+  screenful it lands on before it answers, so `getRowData()` on the next line sees the new order.
 - Rows added with `addRow()` and pinned rows cannot be moved, as with the drag. A row index outside
   the server rows, or a non-integer, throws.
 - Like the drag, the new order lives in the browser only. `onRowReorder` is where you persist it.
@@ -458,12 +488,12 @@ What to expect:
 ## Pinned Rows (`pinnedTopRows` / `pinnedBottomRows` / `pinRow`)
 
 Pins one or more rows so they stay fixed at the top or bottom of the viewport, detached from
-scrolling, sorting, and filtering entirely — the typical use is a totals/summary row that must
+scrolling, sorting, and filtering entirely - the typical use is a totals/summary row that must
 never be sorted away with the rest of the data.
 
 ![A grid with a Budget row pinned to the top and a Total row pinned to the bottom, with six scrolling rows between them](images/pinned-rows.png)
 
-Pinned rows are **their own small data source, not a live view into the main dataset** — pinning
+Pinned rows are **their own small data source, not a live view into the main dataset** - pinning
 takes a snapshot of the row data at that moment. Editing a pinned cell edits only the pinned copy;
 `onCellChange` still fires normally, so sync it back yourself if that's what you want. This is the
 only implementable shape given the grid has no stable row-id concept and can't fetch an arbitrary
@@ -585,8 +615,8 @@ cache and fetched again reads as unpinned. `togglePinRow()` returns the new hand
 `null` when it unpinned or the row is not loaded. Both are undoable.
 
 Multiple pinned rows stack in array order, closest to the header/footer first. Internally each
-pinned row is addressed by an encoded visual row index — negative for pinned-top, `>= totalRows`
-for pinned-bottom — so `row` arguments/return values across the API (`getRowData`, `setCellValue`,
+pinned row is addressed by an encoded visual row index - negative for pinned-top, `>= totalRows`
+for pinned-bottom - so `row` arguments/return values across the API (`getRowData`, `setCellValue`,
 `onCellChange`, `onRowSelect`, `cellTooltip`, ...) may be negative or out-of-range for a pinned row;
 treat `row` as an opaque handle to pass back into `getRowData`/`setCellValue`, not as a position in
 the main dataset.
@@ -600,7 +630,7 @@ Deliberately **not** supported in this version: per-row height/auto-grow (pinned
 at `rowHeight`), row resize, row drag-reorder (as source or drop target), the row-number gutter's
 context menu (apart from the unpin item on a row the user pinned), the fill-handle, the keyboard "row focus" mode (`←` from the first column), and drag range-select
 spanning into or out of a pinned band (a range selection stays within one band). Arrow-key
-navigation *does* work between a pinned band and the scrollable page — stepping off the near edge
+navigation *does* work between a pinned band and the scrollable page - stepping off the near edge
 of one lands on the near edge of the other. `cellDecorator`'s `rowIndex` and `cellBackground`'s
 `row` argument report a 0-based index local to the pinned band for a pinned row, not the encoded
-index seen elsewhere — use `rowData` to identify the row instead.
+index seen elsewhere - use `rowData` to identify the row instead.

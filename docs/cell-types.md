@@ -255,17 +255,17 @@ new JHGrid({
 });
 ```
 
-Giving it an `icon` is what makes the grid draw it — a shaded band with the glyph centred in it, the
+Giving it an `icon` is what makes the grid draw it - a shaded band with the glyph centred in it, the
 same shape `CellRenderers.dropdown()` gives its arrow, so a button column sits with the grid's other
 affordances instead of looking like a one-off. The width it draws is the width it hit-tests, so the
 visible band and the clickable band cannot drift apart.
 
 | Option | Default | Meaning |
 |---|---|---|
-| `onClick` | *(required)* | `(rowIndex, rowData, field) => void`. Fires regardless of `editableCols` — it is an action, not an edit, and takes no part in undo/redo |
-| `icon` | – | The glyph to draw. Omit it and nothing is drawn while the hotspot stays clickable, for a host that would rather draw its own mark through `cellDecorator` |
+| `onClick` | *(required)* | `(rowIndex, rowData, field) => void`. Fires regardless of `editableCols` - it is an action, not an edit, and takes no part in undo/redo |
+| `icon` | - | The glyph to draw. Omit it and nothing is drawn while the hotspot stays clickable, for a host that would rather draw its own mark through `cellDecorator` |
 | `width` | `20` | Hotspot width in px, measured in from the cell's right edge |
-| `style` | – | `'plain'` drops the shaded band and draws the glyph alone |
+| `style` | - | `'plain'` drops the shaded band and draws the glyph alone |
 | `iconSize` / `iconColor` | `13` / header text colour | Glyph font size and fill |
 
 A click inside the hotspot fires `onClick` and does not start an edit on the cell behind it; the

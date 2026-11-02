@@ -65,6 +65,7 @@ to build, start here; if you want to look an option or a method up by name, star
 | Editor behaviour per column | `columnDefs[].editorOptions` | [Editing](editing.md#editor-options-columndefseditoroptions) |
 | Validation | `columnDefs[].validation`, `isValid()` | [Editing](editing.md#validation-columndefsvalidation) |
 | Number-only editing | `editor: 'number'` | [Editing](editing.md#editor-options-columndefseditoroptions) |
+| Set a whole block to one value | `setRangeValue()` | [Methods](reference-methods.md#setrangevaluerange-value) |
 | Undo and redo | `undo()`, `redo()` | [Methods](reference-methods.md#undo--redo) |
 
 ## Cells
@@ -105,7 +106,8 @@ to build, start here; if you want to look an option or a method up by name, star
 | Snapshot and restore layout | `getState()`, `setState()` | [State & Saving](state-and-saving.md#state-snapshotrestore-getstate--setstate) |
 | Rows addressed by key | `getRowIndexByKey()`, `setCellValueByKey()` | [State & Saving](state-and-saving.md#rows-by-their-key-getrowindexbykey--getrowdatabykey--setcellvaluebykey) |
 | Typed edits at the save boundary | `getEdits({ typed: true })`, `columnDefs[].parse` | [State & Saving](state-and-saving.md#typed-and-keyed-edits-getedits-options) |
-| Read unsaved edits | `getEdits()` | [Methods](reference-methods.md#getedits) |
+| Read unsaved edits | `getEdits()`, `getEditedRowCount()` | [Methods](reference-methods.md#getedits) |
+| Blocks set to one value | `getRangeEdits()`, `getChanges().rangeEdits` | [Methods](reference-methods.md#getrangeedits) |
 | A row's edits, before and after | `getRowChanges()` | [Rows](rows.md#a-rows-edits-before-and-after-getrowchanges) |
 | Undo one row's edits | `revertRow()` | [State & Saving](state-and-saving.md#undoing-one-rows-edits-revertrow) |
 | Save row by row | `acknowledgeSave()`, `isNewRow()` | [State & Saving](state-and-saving.md#incremental-save-getoriginalrowdata--isnewrow--acknowledgesave--acknowledgeinsert) |

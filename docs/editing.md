@@ -44,6 +44,45 @@ columnDefs: [
 To register an editor of your own under a key, or to write one inline, see
 [Column Types](renderers-editors.md#column-types-date--richtext--image-and-custom-editorsrenderers) below.
 
+## Which Cells Can Be Edited (`columnDefs[].editable`)
+
+`editableCols` opens columns, and `editable` on a column overrides it in either direction. Give
+`editable` a function when the answer depends on the row - a closed voucher, an approved line, a
+shipped quantity:
+
+```js
+new JHGrid({
+  container: '#grid',
+  data: [
+    { id: 1, status: 'draft',  qty: 10, note: 'first' },
+    { id: 2, status: 'closed', qty: 20, note: 'second' },
+  ],
+  editableCols: '*',
+  columnDefs: [
+    { field: 'status', label: 'Status', editable: false },
+    { field: 'qty', label: 'Qty', editable: (rowData) => rowData.status !== 'closed' },
+    { field: 'note', label: 'Note' },
+  ],
+  theme: { readonlyCellBg: '#f1f3f5' },
+});
+```
+
+![Status is tinted read-only for the whole column; Qty only in the closed row](images/editable-by-row.png)
+
+Row 2 cannot be edited in `qty`: the editor will not open, a paste over it is dropped (and counted
+in the paste banner), the fill handle skips it, Delete leaves it alone, and a checkbox or radio in
+a locked cell does not toggle. The read-only tint follows the same answer, so a locked row inside
+an open column reads as locked instead of looking editable and then refusing.
+
+The function is called with `(rowData, rowIndex, field)` and is asked again at every one of those
+moments, which is what makes it a lock rather than a hint. Keep it to a field read: it runs for
+the visible cells on every frame, so no fetching, no sorting, no building objects. A row the grid
+has not loaded yet is locked without calling the function, so the rule always gets a real row. A
+call that throws locks the cell, and is reported to the console once per column.
+
+`setCellValue()` is not affected. It writes from code, the way a host's own save path does, and
+has always ignored `editableCols` for that reason.
+
 ## Validation (`columnDefs[].validation`)
 
 Rules are declared per column and checked whenever a cell's value is committed: an edit, a paste, a

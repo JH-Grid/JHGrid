@@ -91,7 +91,8 @@ callback a `state` object describing what the user chose:
 - `filters`: per column, either a **string** (the text filter: rows whose value *contains* it) or an
   **array of strings** (the value checklist: rows whose value is *exactly one of* them). An empty
   string in an array stands for an empty or null value.
-- `quickFilter`: a single term to look for in any column, `''` when there is none.
+- `quickFilter`: a single term to look for in any column, `''` when there is none. For a `data`
+  array the grid matches it against the columns; what it means on your server is up to your query.
 
 Send it on both calls. `fetchMeta` needs it too: the total has to be the count *after* filtering, or
 the scrollbar is the wrong length.

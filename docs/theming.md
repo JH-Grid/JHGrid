@@ -90,6 +90,9 @@ canvas; see the note under the table below.
 | `scrollbarThumb` | `#C0C0C0` | Scrollbar thumb color |
 | `scrollbarArrow` | `#6B6B6B` | Glyph color for the step-arrow buttons at each end of a scrollbar track |
 | `scrollbarRadius` | `4` | Scrollbar thumb border radius (px) |
+| `gridRadius` | `0` | Outer corners of the grid itself (px). The grid clips its own canvas, so a rounded value rounds the whole widget |
+| `overlayRadius` | `6` | Corners of the floating surfaces: menus, filter panels and dialogs (px) |
+| `controlRadius` | `4` | Corners of the controls inside them, and of the pager buttons (px) |
 | `filterIconBg` | `rgba(245,158,11,0.18)` | Background of the filter icon on a header with an active filter |
 | `filterIconColor` | `#C87B00` | Filter icon color |
 | `sortIconBg` | `rgba(46,117,182,0.12)` | Background of the sort icon on a header with an active sort |
@@ -98,6 +101,7 @@ canvas; see the note under the table below.
 | `hiddenColIndicator` | `#94A3B8` | Border color of the Excel-style double-line drawn on headers adjacent to a hidden column |
 | `editableCellBg` | `undefined` (no tint) | Background tint applied to editable cells when `editableCols` is not `'*'` |
 | `readonlyCellBg` | `#F5F5F5` | Background tint applied to readonly cells when `editableCols` is not `'*'` |
+| `editedCellBg` | `undefined` (no tint) | Background of a cell holding an unsaved edit. See [Showing What Changed](state-and-saving.md#showing-what-changed-editedcellbg--getrowstate) |
 | `imagePlaceholderBg` | `#F1F5F9` | `CellRenderers.image()` cell background while an image is loading |
 | `imageErrorBg` | `#FEE2E2` | `CellRenderers.image()` cell background on load failure |
 | `imageErrorIcon` | `#DC2626` | `CellRenderers.image()` "broken image" X glyph color |
@@ -235,18 +239,23 @@ reorder happens live: as the pointer crosses each boundary the columns it displa
 rearranging on drop. Outside the drag handler it is still one move: `onColumnReorder` fires once
 with the final order, one undo step covers the whole drag, and <kbd>Esc</kbd> puts the column back.
 
-**Mouse-wheel scrolling** glides to where the gesture is heading (`scrollEaseMs`) rather than
-teleporting a notch at a time. Deltas smaller than one row are applied immediately instead: a
-precision trackpad emits a dense stream of few-pixel deltas that is already smooth, and easing it
-would add lag the hardware had already removed. The split is by step size, not by trying to
-identify the device.
+**Mouse-wheel scrolling** glides to where the notch lands, over `scrollEaseMs` (150ms) - about
+what Chrome's own wheel scrolling does. What decides whether that reads as smooth or as late is not
+the length: the first frame's share of the glide is applied in the same task as the wheel event, so
+the view moves at once, and the glide lands rather than creeping its last sub-pixel. Before those
+two, a 120px notch showed nothing for 14ms and took 134ms to finish, and it felt like a delay.
+
+`scrollEaseMs: 0` applies the notch instantly. That is the most responsive number on a stopwatch
+and the worst to look at, because a notch is several rows tall and arrives as a lurch. Deltas
+smaller than one row are never eased either way: a precision trackpad emits a dense stream of
+few-pixel deltas that is already smooth, and easing it would add lag the hardware had removed.
 
 ```js
 new JHGrid({
   // …
   hoverFadeMs: 0,                                  // instant, no fade
   selectionMoveMs: 0,                              // selection box jumps
-  scrollEaseMs: 0,                                 // wheel deltas applied immediately
+  scrollEaseMs: 0,                                 // wheel notches applied instantly (default 150)
   theme: { hoverRowBg: 'rgba(255,255,255,0.055)' } // light wash for a dark theme
 });
 ```

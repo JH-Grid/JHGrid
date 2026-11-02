@@ -62,7 +62,7 @@ What a click, a drag or a key does. Everywhere below, `Ctrl` also means `Cmd` on
 
 | Action | Result |
 |---|---|
-| Mouse wheel / trackpad | Scrolls, with a short glide for wheel notches (`scrollEaseMs`) |
+| Mouse wheel / trackpad | Scrolls with a short glide for wheel notches (`scrollEaseMs`, 150ms). Sub-row deltas are applied immediately |
 | `Shift` + wheel | Scrolls sideways |
 | Drag the scrollbar | Vertical/horizontal scroll |
 | Click the scrollbar track | Jumps to that position immediately |
@@ -215,6 +215,20 @@ integration is `[role="grid"]` *within* the grid's root element, not the root it
   `ariaRowMirror: false` turns it off, and `ariaRowMirror: { maxCells: 4000 }` moves the point
   where a very wide grid stops paying for it (default 2000 cells; past it only the active cell is
   exposed, with one console warning).
+- **The row-number gutter is the row header.** Each mirrored row starts with a
+  `role="rowheader"` cell holding the row's number, under a column header of its own
+  (`i18n.rowNumberLabel`), so a reader walking down a column can say which row it is on - the
+  counterpart of the column header that says which column. It counts as a column, so
+  `aria-colcount` and every `aria-colindex` include it. With `showRowNumbers: false` there is no
+  gutter and no row header, and the indices start at the first data column.
+- **The state of a row and a cell is in the markup, not only in the paint**: a selected row carries
+  `aria-selected`, and a cell that cannot be typed into carries `aria-readonly` - including a cell
+  locked per row by an `editable` function, so a reader is not told a cell is editable that the
+  grid will refuse to open.
+- **Cells whose value is not what a person should hear are announced as what they are.** An image
+  cell reads as `i18n.imageCell` ("Image") rather than reading out a URL - a `data:` URI is a
+  screenful of base64 - and a checkbox cell reads as `i18n.cellChecked` / `i18n.cellUnchecked`
+  rather than as `true` / `false`.
 - **Pinned rows are always in it**, since they never leave the screen: `aria-rowcount` counts them
   and `aria-rowindex` puts them in reading order - the header is 1, then the rows pinned to the
   top, then the body, then the rows pinned to the bottom. A grand total row (`summaryRow`) is one
