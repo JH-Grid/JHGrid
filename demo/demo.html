@@ -97,7 +97,11 @@ put on the right.</p>
   // Dynamic import, not a static `import ... from` declaration -- some browsers never fetch a
   // static import inside an inline module script on this page, leaving it stuck on "Booting…"
   // with no error at all. A dynamic import resolves reliably instead.
-  const { JHGrid, CellRenderers } = await import('https://cdn.jsdelivr.net/gh/JH-Grid/JHGrid@latest/dist/jhgrid.esm.js');
+  //
+  // The bundle next to this file, not the CDN: demo/server.mjs serves the repo root, so this page
+  // runs the build in this working copy and keeps working with no network at all. The CDN build is
+  // what docs/demo.md loads on the published site.
+  const { JHGrid, CellRenderers } = await import('../dist/jhgrid.esm.js');
 
   const DEPTS  = ['Engineering', 'Sales', 'Marketing', 'Support', 'Design'];
   const GRADES = ['A', 'B', 'C', 'D'];

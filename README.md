@@ -18,14 +18,14 @@ Zero dependencies. Built-in editing, filtering, undo/redo, and 2D virtualization
 - **Pagination** - continuous scrolling or classic pages, with an optional page-size selector
 - **Selection & row operations** - cell/range selection, single/multi row selection, row drag reorder (within a grid or between two), hide rows, move a row from code
 - **Editing** - inline editing, validation, undo/redo, TSV copy, cut & paste, fill handle, revert one row
-- **Rich cell types** - dropdown, multiselect, checkbox, radio, date, richtext, image, button, number, plus custom editors/renderers
+- **Rich cell types** - dropdown, multiselect, checkbox, radio, date, richtext, image and button columns, built-in renderers (number, currency, progress bar, badge, link, checkmark) and custom editors/renderers
 - **Filtering & sorting** - set filter, tag filter for huge columns, quick filter, multi-column sort
 - **CRUD & change tracking** - row/column add/delete with diff-based persistence
 - **Headers & styling** - multi-level headers (lockable against a drag), conditional row/cell styling, wrapped cell text with automatic row height, context menus you can narrow or extend
 - **Totals** - a grand total row pinned above or below the data, updated incrementally as cells change
 - **Changes at runtime** - subscribe to callbacks with `on()`/`off()`, swap the theme with `setTheme()` or the data source with `setDataSource()`, all without rebuilding the grid
 - **State & export** - state snapshot/restore (with or without unsaved edits), CSV export, print preview
-- **i18n & accessibility** - KO/JA/ZH localization, screen-reader table navigation over the rows on screen, keyboard navigation with remappable shortcuts, high-contrast support
+- **i18n & accessibility** - KO/JA/ZH localization, screen-reader table navigation over the rows on screen, keyboard navigation whose built-in keys can be switched off one by one, high-contrast support
 - **Zero dependencies & theming** - fully themeable with no runtime dependencies
 
 ---
@@ -36,12 +36,11 @@ Zero dependencies. Built-in editing, filtering, undo/redo, and 2D virtualization
 large-data tuning. Windows 11, i7-12700H, 32GB, headless Chromium. Timed from the API call to each
 grid's own "done" signal plus two painted frames. Figures are the median of three runs, except
 Grid B, which is a single run: a second load of a million rows takes the renderer past
-Chromium's heap cap and it is killed. Run it yourself:
-`node scripts/bench-vs-grids.mjs --sizes 1000000 --libs <node_modules with the other grids>`.
+Chromium's heap cap and it is killed.
 
 Grid A, Grid B and Grid C are three widely used open-source grids, each on its current release and
-its own defaults. The figures are one machine's; the script that produced them is in the
-repository, so anyone can install those grids and re-run the same measurements.
+its own defaults. The figures are one machine's, measured by a harness that drives every grid
+through the same calls; it is part of the build repository and is not published here.
 
 | 1M rows | **JHGrid** | Grid A | Grid B | Grid C |
 |---|---:|---:|---:|---:|

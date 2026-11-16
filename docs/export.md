@@ -100,7 +100,8 @@ What ends up in the file or the table:
 - The columns you can see, in their current order, under their labels; hidden and deleted columns
   are left out. Rows follow the order on screen.
 - The text the cells show: unsaved edits are included, and dates are written in the column's `format`.
-  A rich-text cell is written without its tags.
+  A rich-text cell is written without its tags. A column can rewrite that text for itself - see
+  [`columnDefs[].display`](#changing-what-a-cell-exports-as-columndefsdisplay).
 - Rows you removed with `deleteRow(i, { permanent: true })` are left out; rows only marked for
   deletion are still on screen, so they are exported.
 - A value that begins with `=`, `+`, `-`, `@`, a tab or a carriage return, and is not a plain number, gets a
@@ -109,3 +110,34 @@ What ends up in the file or the table:
 - Lines end with `\r\n`. When only loaded rows are exported and the server has more, a console warning
   says how many were left out.
 - `printGrid()` logs `popup blocked` and does nothing if the browser stops the popup.
+
+## Changing what a cell exports as (`columnDefs[].display`)
+
+`display(text, raw, def)` is the last word on what a cell's value *reads* as. It runs after the
+column's own formatting and receives the text that formatting produced, the raw stored value, and
+the column definition; the string it returns is what goes on the clipboard, into a CSV and onto a
+printed page.
+
+```js
+columnDefs: [
+  { field: 'status', display: (text) => (text === 'C' ? 'Closed' : text) },
+  // An empty cell reads as something rather than as nothing.
+  { field: 'note',   display: (text) => (text === '' || text == null ? '(none)' : text) },
+]
+```
+
+All three paths go through the same function, so they cannot disagree about what a date or a
+rich-text cell says. Column auto-fit measures both what the cell reads as and what it draws, so a
+`display` that shortens the text does not leave the drawn value clipped.
+
+A `display` that throws is reported in the console once for that column and the cell reads as the
+grid's own formatting instead - a broken column cannot abandon a copy or an export half-written.
+
+There is no reverse of it. Copying inside the grid puts the text the column reads as on the
+clipboard, and pasting writes that text into the cells: a `status` column copied as `Closed` is
+stored as `Closed`, not as `C`. Make `display` the *stored* value's own name if the column is one
+users copy and paste within the grid, or leave the column read-only.
+
+It does **not** reach the canvas: what a cell *draws* is a renderer's business, which is the other
+half a column answers to - see
+[Renderers & Editors](renderers-editors.md#column-types-date--richtext--image-and-custom-editorsrenderers).

@@ -13,6 +13,7 @@ or says nobody, the upgrade is drop-in.
 
 | Version | Date |
 |---|---|
+| [0.5.1](changelog/v0.5.1.md) | 2026-11-17 |
 | [0.5.0](changelog/v0.5.0.md) | 2026-11-02 |
 | [0.4.0](changelog/v0.4.0.md) | 2026-10-18 |
 | [0.3.4](changelog/v0.3.4.md) | 2026-10-11 |
@@ -28,206 +29,75 @@ or says nobody, the upgrade is drop-in.
 
 ---
 
-## 0.5.0 - 2026-11-02
+## 0.5.1 - 2026-11-17
 
-Row reordering no longer reads the table, a block of edits costs what one edit costs, and the screen
-stops blinking after a reorder or a reload.
+A drag that reaches the edge of the grid now scrolls, the filter icon and the dropdown arrow are big
+enough to hit, and a column can say how its value reads when it is copied or exported.
 
 | Change | Who is affected | What to do |
 |---|---|---|
-| `exportCsv({ full: true })` after a drag follows the order on screen; it used to export the server's order | Anyone exporting after a reorder - the old file was wrong | Nothing |
-| A reorder drops hidden rows that were filed by position, as a sort or a filter already did | Grids with no `rowKey` that hide rows and then reorder | Set `rowKey`, and hidden rows follow their record instead of their position |
-| The loading overlay waits 250 ms, so a fast re-fetch shows nothing | Tests asserting the overlay is up immediately after `setSort` / `setFilter` / `reloadData` | Assert that it appears, not that it is already there. `aria-busy` is still immediate |
-| `fullScanPageSize` / `fullScanConcurrency` no longer affect `rowReorder` | Hosts that set them for dragging | Leave them; they still tune `exportCsv({ full: true })` |
-| The quick filter searches the grid's columns, not every field of the row | `data` grids whose rows carry fields no column shows | Put the field in `columnDefs` - hidden, if it should not show |
-| `onCellChange` fires once for a block set to one value, with `{ range, newValue }` and no `row` / `field` | Handlers written for the per-cell shape | Read `e.range` when `e.row` is absent |
-| The row-number gutter is a `role="rowheader"` column, so `aria-colcount` and every `aria-colindex` grow by one | Tests and tooling asserting those numbers | Allow for the gutter, or `showRowNumbers: false` |
-| `validateAll()` reports only the cells whose verdict changed | Hosts counting `onValidationError` calls | An ordinary edit still reports its cell every time |
+| The filter icon and the dropdown arrow are 24 px wide, up from 20 | Tests asserting those widths, and layouts measured to the pixel | Import `FILTER_ICON_W` / `DROPDOWN_ARROW_W` instead of writing the number |
+| An `onCellChange` that throws no longer throws out of the call that wrote the cell | Code relying on that throw to abort a write | Validate with the column's `validation` rule, or block the write with `editable()` |
 
 ### Added
 
-- **`setRangeValue()`** sets a whole block to one value as one record, so the cost follows the edits
-  pending rather than the size of the range. `Ctrl+A` then `Delete` over 1,000,000 × 22 took 18 s and
-  1.1 GB; it now takes 1.9 ms and no extra heap.
+- **`columnDefs[].display(text, raw, def)`** - the last word on what a cell's value *reads* as, for
+  the clipboard, a CSV and a printed page. See
+  [Changing what a cell exports as](export.md#changing-what-a-cell-exports-as-columndefsdisplay).
 
   ```js
-  grid.setRangeValue({ r1: 0, r2: grid.getTotalRows() - 1, fields: ['active'] }, 'true');
+  { field: 'status', display: (text) => (text === 'C' ? 'Closed' : text) }
   ```
 
-  Returns `false` without changing anything when a block cannot represent the range - no editable
-  column in it, a column that decides editability per row, or too many blocks - so `setCellValues()`
-  stays as the fallback. One undo step, and validation still applies.
-
-- **`getRangeEdits()`, and `rangeEdits` on `getChanges()`** - the pending blocks, as
-  `[{ r1, r2, fields, value }]`. Apply one as a single `UPDATE … SET field = value` over the rows. A
-  small block is also spread cell by cell in `getEdits()`; a large one appears only here.
-
-- **`getEditedRowCount()`** - how many rows hold an unsaved edit, without building an object per
-  edited cell first.
-
-- **`theme.editedCellBg` and `getRowState()`** show what is waiting to be saved.
-
-  ```js
-  new JHGrid({ theme: { editedCellBg: '#FEF3C7' } });   // off by default
-  grid.getRowState(0);   // 'added' | 'updated' | 'deleted' | 'unchanged'
-  ```
-
-  The tint clears with the edits (`acknowledgeChanges()`, `revertRow()`, `clearEdits()`).
-  `getRowState()` is a set lookup, cheap enough for a cell renderer to call per row per frame.
-
-- **Search by Korean initials.** The quick filter and text filter conditions also match initials when
-  the term is nothing but initial consonants, so `ㄱㅁㅅ` finds the names whose syllables begin with
-  them. An ordinary term searches exactly as before. Korean only.
-
-- **`columnDefs[].editable` takes a function**, so a rule can depend on the row.
-
-  ```js
-  columnDefs: [{ field: 'qty', editable: (rowData) => rowData.status !== 'closed' }]
-  ```
-
-  Every write path asks it again with the row right before writing - editor, paste, fill handle,
-  Delete, checkbox - and the read-only tint follows the same answer. Keep it to a field read: it runs
-  for the visible cells on every frame. `setCellValue()` is unaffected.
-
-- **`autoHeaderHeight`** lets the header grow to fit a wrapped label instead of cutting it off at
-  `headerHeight`.
-
-  ```js
-  new JHGrid({ wrapHeader: true, autoHeaderHeight: true });
-  new JHGrid({ wrapHeader: true, autoHeaderHeight: { maxLines: 2 } });
-  ```
-
-- **`onProgress` for `exportCsv({ full: true })` and `printGrid({ full: true })`**, called once per
-  page with the rows written so far.
-
-  ```js
-  await grid.exportCsv({ full: true, onProgress: ({ rows, total }) => bar.value = rows / total });
-  ```
-
-  `rows` can pass `total` when a `fetchData` returns more rows than the grid was told about, so clamp
-  before showing a percentage.
-
-- **`filterRows: false` and `sortRows: false`** say the `data` array is already filtered, or already
-  in the order it should be shown in. The keys still reach `onFilter` / `onSort` and the header icons;
-  the rows are handed over as they are. For arrays whose rows mean something together - a row that
-  heads the ones under it - where a filter or a sort would drop or scatter that meaning.
-
-- **Corner radius is a theme key**: `gridRadius`, `overlayRadius`, `controlRadius`. The defaults are
-  the values that were hard-coded before, so nothing looks different until you set one.
-
-- **A custom cell renderer is given its column's `field`.** It used to arrive `undefined`, so a
-  renderer shared across columns could not tell them apart.
-
-  ```js
-  { field: 'amount', renderer: (ctx, { value, field, text }) => text(`${field}: ${value}`) }
-  ```
-
-- **Screen reader table navigation carries row headers, selection and read-only state.** The
-  row-number gutter goes out as `role="rowheader"`, selected rows carry `aria-selected`, cells that
-  cannot be edited carry `aria-readonly`, and cells whose value is not meant to be heard are
-  announced as what they are - an image cell as `i18n.imageCell`, a checkbox as `i18n.cellChecked` /
-  `i18n.cellUnchecked`. Three `i18n` keys were added, in ko, en, ja and zh.
+  It runs after the column's own formatting, and all three paths go through the same function, so
+  they cannot disagree about what a date or a rich-text cell says. It does not reach the canvas: what
+  a cell *draws* is a renderer's business, which is the other half a column answers to - so column
+  auto-fit measures both, and a `display` that shortens the text leaves nothing clipped on screen.
+  A `display` that throws is reported once for that column and the cell reads as the grid's own
+  formatting, so one bad column cannot abandon an export half-written.
 
 ### Changed
 
-- **Row reordering no longer reads the table.** The order is kept as a list of row positions - which
-  row of your `fetchData` result sits where on screen - rather than as the rows themselves. A drop
-  moves a number, not a row, so it costs four bytes a row instead of a copy of the dataset in memory.
-  Nothing is created or changed in your database.
-  Measured on 1,000,000 rows × 50 columns against SQL Server:
+- **Dragging a column header or a row to the edge scrolls the grid.** Hold the pointer within 24 px
+  of the edge and the view follows at 40 px every 50 ms, the same auto-scroll that extending a
+  selection and dragging the fill handle already used. Release, or move back inside, and it stops.
 
-  | | before | after |
-  |---|---|---|
-  | `moveRow(1, 4)` | 23,177 ms | **37 ms** |
-  | requests | 100 | 2 |
-  | rows read | 1,000,000 | 600 |
+  On a table wider than the screen, moving the last column to the front used to mean dragging to the
+  edge, dropping, scrolling by hand, picking the column up again, and repeating - 56 columns made it
+  four or five rounds. It is now one drag. The insertion marker is recalculated as the view moves, so
+  where the column will land stays visible while it scrolls.
 
-  It used to be paid again after every sort, filter and reload; now there is nothing to re-read. A
-  long move is just as cheap - `moveRow(1, 500000)` takes 47 ms.
+  The axis is the one being dragged: a column drag scrolls sideways only, a row drag vertically only.
+  A column header sits above the scrollable area, so without that an unmoving pointer on a header
+  would have scrolled the rows away under it.
 
-- **A dragged row no longer pulls a page of the table in with it.** The rows that moved are kept, so
-  a screenful after 100 long drags costs 1 request instead of 107, and 325 ms instead of 6.4 s. The
-  pages a drop will need are fetched while the drag is still moving; a press on the gutter reads
-  nothing.
+  Frozen columns are unaffected - the edge is measured from where the scrollable area starts, which
+  is where scrolling can do something.
 
-- **The loading overlay waits 250 ms.** A re-fetch that finishes sooner shows nothing - below that it
-  reads as the screen blinking rather than as work being done. Over it the overlay appears as before.
-  `aria-busy` is not delayed, and a failed boot and a full scan's progress still show immediately.
+  Nothing to turn on, and no option to turn it off.
 
-- **The quick filter searches the grid's columns, not every field of the row.** A term that existed
-  only in a field no column shows used to match rows with nothing on screen to say why. Hidden
-  columns are still searched.
-
-- **`validateAll()` reports only the cells whose verdict changed.** Over 601 rows and 2 validated
-  columns it fired `onValidationError` 1,203 times for one bad cell. An ordinary edit still reports
-  its cell every time; only the revalidation paths changed.
-
-- **Reading ahead no longer competes with the rows on screen, and gives up when the host is slow.**
-  The chunk past the viewport waits for the one the viewport needs, and is dropped rather than queued
-  when a page takes longer than 250 ms - a chunk nobody has scrolled to is the same query run twice.
-  First paint of a 1,000,000-row table: the needed page went from 89 ms to 22 ms.
-
-- **The first `fetchMeta` goes out before the grid builds itself**, so about 20 ms of setup no longer
-  sits in front of the round trip. Only the first boot is affected.
+- **The filter icon and the dropdown arrow are 24 px wide.** They were 20, which is under the 24×24
+  minimum WCAG 2.2 asks of a pointer target (2.5.8) - tall enough, too narrow. Every hit region,
+  autofit reservation and glyph position is derived from the two exported constants, so the target
+  and the thing drawn in it cannot drift apart.
 
 ### Fixed
 
-- **`exportCsv({ full: true })` ignored a drag reorder** and wrote the server's order, silently, with
-  `data:` as well as `fetchMeta`/`fetchData`. `full: false` was always right, which is why small
-  datasets never showed it. The export now follows the order on screen, and streams it rather than
-  buffering the table.
+- **An `onCellChange` that threw left the cell written but never validated.** Every other host
+  callback in core - `cellBackground`, `cellTooltip`, `editable()`, a cell button's `onClick` - is
+  already called inside a try/catch that reports the error and carries on; `onCellChange` was the one
+  that was not. The value was in the edit store before the callback ran, so a throw skipped the lines
+  after it: the validator never saw the new value and the row never grew for a newline. A cell
+  breaking a `required` or `min`/`max` rule sat in the grid with nothing marking it, and
+  `isValid()` agreed with the grid rather than with the data.
 
-- **Hidden rows broke a reorder.** A hidden row is filed by position, and a reorder is what makes a
-  position mean a different row: the wrong row was hidden, and with `rowKey` set the right one was
-  hidden as well, so a visible row vanished and left a blank that the row count still counted.
+  The error is now logged with the row and field (or the range) and the commit finishes. A handler's
+  bug stays the handler's bug instead of becoming the grid's wrong state. This applies to every
+  write that reports one - a single cell, `setRangeValue()`, and Delete over a selection, including
+  the slow cell-by-cell path a Delete falls back to once the edit store will not take another
+  block.
 
-- **A drop blanked the screen** for two frames on every drag, while rows the grid already held were
-  fetched again. It now rebuilds the screenful from what it has, before the next paint.
-
-- **A `devicePixelRatio` change could pin the grid to a stale width** - a window moved to a display
-  with different scaling came back half as wide, with nothing to resize it again. A responsive grid
-  now measures its container; one given an explicit `width` keeps it.
-
-- **A whole-table scan lost rows to a host that caps its page size, and asked for far more pages than
-  it needed.** `exportCsv({ full: true })` and `printGrid({ full: true })` walk every page of the
-  current result. The page size was `chunkSize`, 300 by default, so a million rows meant 3,334 calls;
-  scans now ask for `max(chunkSize, 10000)` unless `fullScanPageSize` says otherwise. And a backend
-  that answered a 10,000-row ask with 1,000 lost the other 9,000 - rows missing from the middle of
-  the file, not a short one. The scan now takes page 0's answer as the size the host will serve.
-
-- **A sort or a filter discarded a block of edits without asking**, as it already asked for typed
-  cells.
-
-- **A sort, a filter or a quick-filter change discarded rows marked for deletion without asking.**
-  The prompt counted only cell edits, so marking ten rows and then sorting lost all ten silently and
-  `getChanges().deleted` came back empty.
-
-- **`undeleteColumn()` brings the column's unsaved edits back with it.** `deleteColumn()` cleared
-  them, so restoring the column restored an empty one.
-
-- **`autoFitColumns()` counts a block's value**, which was invisible to the fit before.
-
-- **`validateAll()` validated the wrong rows after a row was inserted or permanently deleted** - a row
-  that really broke its rule came back clean while an untouched row was marked invalid.
-  `getInvalidCells()` and `isValid()` reported the same wrong rows.
-
-- **Editing a cell in a bottom pinned row made it appear in `getChanges().updated`** as an edit to a
-  server row, which means sending an UPDATE for that row's `rowKey`. Top pinned rows were already
-  filtered out.
-
-- **A wrapped header label was cut off at the top and bottom.** A label needing more lines than the
-  header has height lost its first and last lines entirely. The lines that fit are kept and the last
-  one ends in an ellipsis, as it does without `wrapHeader`.
-
-- **`onChunkError` is given the chunk index**, so a host with several chunks in flight can place the
-  failure. The first argument is unchanged.
-
-- **A panel or a menu could stay on screen after the point it hangs from had scrolled out of view.**
-  The decision was made inside a `requestAnimationFrame` callback, which a browser delays when it is
-  busy; it is now made on the scroll event itself.
-
-- **Accessibility.** `role="grid"` moved to a container that only the row mirror writes into, so
-  nothing added to the grid's root can break `aria-required-children` again. `aria-rowcount` counts
-  the pinned rows. A grid whose columns have not arrived no longer puts a row with no cells in the
-  mirror. The default `theme.overlayHintText` went from 3.19:1 to 5.10:1 against white, over the
-  4.5:1 WCAG AA asks for body text.
+- **The frozen-column divider was hard to see.** `theme.frozenBorder` went from `#B0B0B0` to
+  `#878787`, which is 3.59:1 against the row background rather than 2.17:1 - over the 3:1 WCAG AA
+  asks of a meaningful non-text boundary (1.4.11). The line says where the frozen columns end, which
+  is the kind of boundary that rule is about.

@@ -19,7 +19,7 @@ to build, start here; if you want to look an option or a method up by name, star
 | Single-callback data source | `fetchPage` | [Data Source](data-source.md#fetchpage-single-callback-alternative) |
 | In-memory array | `data` | [Data Source](data-source.md#local-array-data-data) |
 | Swapping the source at runtime | `setDataSource()` | [Data Source](data-source.md#changing-the-data-source-at-runtime-setdatasource) |
-| Chunked loading, prefetch and cache | `chunkSize`, `prefetchChunks`, `maxCachedChunks` | [Architecture](architecture.md) |
+| Chunked loading, prefetch and cache | `chunkSize`, `maxCachedChunks`, `prefetch()` | [Architecture](architecture.md) |
 | Continuous scroll or classic pages | `pagination`, `pageSize` | [Pagination](pagination.md) |
 | Page-size selector | `pageSizeOptions` | [Pagination](pagination.md#letting-users-pick-the-page-size) |
 
@@ -73,7 +73,7 @@ to build, start here; if you want to look an option or a method up by name, star
 | Feature | Option / API | Guide |
 |---|---|---|
 | Checkbox, radio, dropdown, multiselect | `columnDefs[].type` | [Cell Types](cell-types.md) |
-| Date columns | `type: 'date'`, `datePattern` | [Cell Types](cell-types.md#date-columns-type-date) |
+| Date columns | `type: 'date'`, `format` | [Cell Types](cell-types.md#date-columns-type-date) |
 | Button columns and per-cell buttons | `type: 'button'`, `cellButton` | [Cell Types](cell-types.md#button-columns-type-button) |
 | Built-in renderers | `CellRenderers` | [Renderers](renderers-editors.md#built-in-cell-renderers-cellrenderers) |
 | Rounding and negatives on an amount | `CellRenderers.number({ rounding, negative })` | [Renderers](renderers-editors.md#money-columns-rounding-and-negatives) |
@@ -120,7 +120,7 @@ to build, start here; if you want to look an option or a method up by name, star
 |---|---|---|
 | Korean, Japanese, Chinese locales | `locale` | [Localization](i18n.md) |
 | Every string translatable | `i18n` | [Localization](i18n.md#text-reference-i18n) |
-| Keyboard navigation and remappable shortcuts | `keyMap` | [Interaction](interaction.md) |
+| Keyboard navigation, with built-in keys switchable off | `keyboardShortcuts` | [Interaction](interaction.md) |
 | ARIA structure, live region, reduced motion, high contrast | `ariaLabel` | [Interaction](interaction.md#accessibility) |
 | Screen-reader table navigation | `ariaRowMirror` | [Interaction](interaction.md#accessibility) |
 | Runtime event subscription | `on()`, `off()`, `listenerCount()` | [Callbacks](reference-callbacks.md#subscribing-at-runtime-on--off) |

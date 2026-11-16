@@ -274,12 +274,32 @@ export interface ColumnDef {
    * `getChanges()` and `getEdits({ typed: true })` run it. The grid itself keeps working in text.
    */
   parse?: (value: string, rowData: Record<string, unknown> | null, field: string) => unknown;
+  /**
+   * How this column's text should be read back by your own code, for somewhere that stores a type
+   * alongside a value. The grid never looks at either of them: it carries them through, so the
+   * definition handed to `display(text, raw, def)` arrives whole.
+   *
+   * `excelType: 'number'` says the text in these cells is a number; `'text'` says it is not, even
+   * when a numeric renderer would have suggested otherwise (a staff code of "0123").
+   * `excelNumFmt` is that column's spreadsheet number format, e.g. `'#,##0'`.
+   */
+  excelType?:   'number' | 'text';
+  excelNumFmt?: string;
   field:        string;
   label?:       string;
   align?:       'left' | 'center' | 'right';
   headerAlign?: 'left' | 'center' | 'right';
   group?:       string | string[];
   width?:       number;
+  /**
+   * Rewrites the text this column reads as, after the grid has formatted it - on the clipboard, in
+   * a CSV and on a printed page. It never reaches the canvas: what the cell draws is `renderer`.
+   *
+   * A `display` that throws is reported once and the cell reads as the grid's own formatting, so
+   * one bad column cannot abandon an export. There is no reverse of it: pasting back into the grid
+   * stores the text as it reads, so `'C'` copied as `'Closed'` is stored as `'Closed'`.
+   */
+  display?:     (text: unknown, raw: unknown, def: ColumnDef) => string;
   renderer?:    string | CellRendererFn;
   type?:        'text' | 'dropdown' | 'multiselect' | 'checkbox' | 'radio' | 'button' | 'date' | 'richtext' | 'image';
   /** `type: 'date'`: a pattern of YYYY/YY/MM/DD/HH/mm/ss, or 'locale'. Defaults to the locale's own

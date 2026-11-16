@@ -229,7 +229,7 @@ mapping is per column type:
 | Column | Cell holds | SQL wants |
 |---|---|---|
 | `type: 'checkbox'` | `'true'` / `'false'` | `bit`: `1` / `0` |
-| `type: 'number'` | `'1,234.50'` (as formatted) | `decimal`: `1234.50` |
+| a column drawn by `CellRenderers.number()` | `'1,234.50'` (as formatted) | `decimal`: `1234.50` |
 | `type: 'date'`, `format: 'MM/DD/YYYY'` | `'12/31/2026'` | `date`: `'2026-12-31'` |
 
 `getEdits({ typed: true })` runs each column's `parse` and hands back the type the original value

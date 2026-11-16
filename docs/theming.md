@@ -85,7 +85,7 @@ canvas; see the note under the table below.
 | `selectionFill` | `rgba(46,117,182,0.10)` | Range selection background overlay |
 | `selRowBg` | `rgba(46,117,182,0.12)` | Background overlay for selected rows (when `rowSelection` is active) |
 | `hoverRowBg` | `rgba(0,0,0,0.045)` | Wash over the row under the pointer. Neutral rather than the selection blue so the two stay tellable apart on the same row; use a light value on a dark theme, or a falsy value to disable |
-| `frozenBorder` | `#B0B0B0` | Separator line between frozen and scrollable columns |
+| `frozenBorder` | `#878787` | Separator line between frozen and scrollable columns. 3.59:1 against a white row, since this line is what says "these columns do not scroll" (WCAG 1.4.11) |
 | `scrollbarBg` | `#F0F0F0` | Scrollbar track background |
 | `scrollbarThumb` | `#C0C0C0` | Scrollbar thumb color |
 | `scrollbarArrow` | `#6B6B6B` | Glyph color for the step-arrow buttons at each end of a scrollbar track |

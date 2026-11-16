@@ -67,11 +67,8 @@ One case goes the other way: text that is already in order sorts faster elsewher
 comparator here is locale- and numeric-aware (`item2` before `item10`, CJK text by its own rules)
 rather than a plain string compare. The CJK row is the other side of that same trade.
 
-Run it yourself:
-
-```
-node scripts/bench-vs-grids.mjs --sizes 1000000 --libs <node_modules holding the other grids>
-```
+The harness that produced these figures drives every grid through the same calls. It is part of
+the build repository and is not published here.
 
 ## Where the cost goes
 

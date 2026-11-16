@@ -154,9 +154,10 @@ const grid = new JHGrid({
 ## Responsive Sizing (`responsive`)
 
 `responsive` is **on by default** as long as you don't pass `width`/`height`: the grid fills its
-container and follows it as the container resizes, via `ResizeObserver`. Size the container with CSS -
-it needs a height of its own, since an element that is only as tall as its content has none to give,
-and the grid then falls back to the fixed 1200 x 700 default until the container does have a size.
+container and follows it as the container resizes, via `ResizeObserver`. The container needs a height
+of its own: an element that is only as tall as its content has none to give, and the grid then keeps
+whatever height it started at - `height` if one was passed, otherwise the 700 default - while still
+taking its width from the container.
 
 ```html
 <div id="grid" style="width: 100%; height: 60vh;"></div>
@@ -172,8 +173,11 @@ new JHGrid({
 </script>
 ```
 
-Pass `width`/`height` (or `responsive: false`) to opt back into a fixed size instead: `width` and
-`height` are ignored (with a console warning) whenever `responsive` ends up on. With `pagination` on,
+Pass `width`/`height` (or `responsive: false`) to opt back into a fixed size instead. Passing both
+at once is a contradiction and warns: each dimension the container reports (both have to be above
+zero) replaces the option, and one it does not report keeps it - so a container with no height of its
+own leaves `height` doing the work while the width follows the container. Pick one - leave out
+`responsive` for a grid of exactly that size, or leave out the size and let it measure the container. With `pagination` on,
 the pager bar is taken out of the container's height, so the rows keep whatever room is left. In a
 flex or grid layout give the container `min-height: 0` (and `min-width: 0`) so it can shrink with its
 parent. Browsers without `ResizeObserver` size the grid once (or use the fixed default) and do not
